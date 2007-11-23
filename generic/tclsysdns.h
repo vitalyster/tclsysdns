@@ -12,3 +12,7 @@ int
 Impl_GetNameservers (
 	Tcl_Interp *interp);
 
+int
+Impl_Query (
+	Tcl_Interp *interp);
+

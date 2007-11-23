@@ -26,9 +26,10 @@ BEGIN
             VALUE "OriginalFilename", "sysdns" VERSION ".dll\0"
             VALUE "CompanyName",      "The Tcl Development Community\0"
             VALUE "FileVersion",      DOTVERSION "\0"
-            VALUE "LegalCopyright",   "Copyright \251 2007 Konstantin Khomoutov\0"
+            VALUE "LegalCopyright",   "Copyright \251 2007 Konstantin Khomoutov <flatworm@users.sourceforge.net>\0"
             VALUE "ProductName",      "Tcl System DNS Extension\0"
             VALUE "ProductVersion",   DOTVERSION "\0"
+            VALUE "WWW",              "http://tclsysdns.googlecode.com\0"
         END
     END
     BLOCK "VarFileInfo"

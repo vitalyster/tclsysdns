@@ -307,7 +307,7 @@ baselibs  = $(baselibs) $(TKSTUBLIB)
 !endif
 !endif
 
-baselibs  = $(baselibs) wsock32.lib dnsapi.lib
+baselibs  = $(baselibs) wsock32.lib iphlpapi.lib dnsapi.lib
 
 # Avoid 'unresolved external symbol __security_cookie' errors.
 # c.f. http://support.microsoft.com/?id=894573

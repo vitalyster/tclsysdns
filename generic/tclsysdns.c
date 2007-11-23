@@ -16,7 +16,7 @@ Sysdns_Query (
 	Tcl_Obj *const objv[]
 	)
 {
-	return TCL_OK;
+	return Impl_Query(interp);
 }
 
 static int

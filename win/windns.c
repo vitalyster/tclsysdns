@@ -1,15 +1,17 @@
 /*
+ * windns.c --
+ *   Windows part of system-level implementation.
  *
+ * $Id$
  */
 
 #include <tcl.h>
 #include "tclsysdns.h"
 
 #include <windows.h>
-#include <wchar.h>
 #include <WinDNS.h>
 #include <winsock.h>
-#include <assert.h>
+#include <Iphlpapi.h>
 
 /* Code taken from win/tkWinTest.c of Tk
  *----------------------------------------------------------------------
@@ -95,6 +97,45 @@ AppendSystemError(
 	}
 }
 
+int
+Impl_GetNameservers (
+	Tcl_Interp *interp)
+{
+	DWORD res;
+	PFIXED_INFO dataPtr;
+	ULONG buflen;
+	Tcl_Obj *listObj;
+	IP_ADDR_STRING *nextPtr;
+
+	buflen  = sizeof(FIXED_INFO);
+	dataPtr = (PFIXED_INFO) ckalloc(buflen);
+
+	res = GetNetworkParams(dataPtr, &buflen);
+	if (res == ERROR_BUFFER_OVERFLOW) {
+		dataPtr = (PFIXED_INFO) ckrealloc((char*) dataPtr, buflen);
+	}
+	res = GetNetworkParams(dataPtr, &buflen);
+
+	if (res != ERROR_SUCCESS) {
+		Tcl_ResetResult(interp);
+		AppendSystemError(interp, res);
+		ckfree((char*) dataPtr);
+		return TCL_ERROR;
+	}
+
+	listObj = Tcl_NewListObj(0, NULL);
+	nextPtr = &(dataPtr->DnsServerList);
+	while (nextPtr != NULL) {
+		Tcl_ListObjAppendElement(interp, listObj,
+				Tcl_NewStringObj(nextPtr->IpAddress.String, -1));
+		nextPtr = nextPtr->Next;
+	}
+
+	Tcl_SetObjResult(interp, listObj);
+	ckfree((char*) dataPtr);
+	return TCL_OK;
+}
+
 static Tcl_Obj*
 NewStringObjFromIP4Addr (
 	IP4_ADDRESS addr
@@ -107,24 +148,21 @@ NewStringObjFromIP4Addr (
 }
 
 int
-Impl_GetNameservers (
-	Tcl_Interp *interp)
+Impl_Query (
+	Tcl_Interp *interp
+	)
 {
 	DNS_STATUS res;
-	PIP4_ADDRESS dataPtr;
-	DWORD buflen, i, j;
+	PDNS_RECORD recPtr, chunkPtr;
 	Tcl_Obj *listObj;
-	BOOL same;
 
-	res = DnsQueryConfig(
-		DnsConfigDnsServerList,
-		TRUE,
-		//(PWSTR) "TAP",
-		//(PWSTR) "zhoppa",
+	res = DnsQuery_UTF8(
+		"jabber.ru.",
+		DNS_TYPE_A,
+		DNS_QUERY_STANDARD,
 		NULL,
-		NULL,
-		(PVOID) &dataPtr,
-		&buflen
+		&recPtr,
+		NULL
 	);
 	if (res != ERROR_SUCCESS) {
 		Tcl_ResetResult(interp);
@@ -132,23 +170,17 @@ Impl_GetNameservers (
 		return TCL_ERROR;
 	}
 
-	assert(dataPtr[0] == buflen / sizeof(IP4_ADDRESS) - 1);
-
 	listObj = Tcl_NewListObj(0, NULL);
-	for (i = 1; i < buflen / sizeof(IP4_ADDRESS) - 1; ++i) {
-		same = FALSE;
-		for (j = 1; j < i; ++j) {
-			if (dataPtr[j] == dataPtr[i]) {
-				same = TRUE;
-				break;
-			}
-		}
-		if (!same) {
+	chunkPtr = recPtr;
+	while (chunkPtr != NULL) {
+		if (chunkPtr->Flags.S.Section == DnsSectionAnswer) {
 			Tcl_ListObjAppendElement(interp, listObj,
-					NewStringObjFromIP4Addr(dataPtr[i]));
+					NewStringObjFromIP4Addr(chunkPtr->Data.A.IpAddress));
 		}
+		chunkPtr = chunkPtr->pNext;
 	}
-	LocalFree(dataPtr);
+
+	DnsRecordListFree(recPtr, DnsFreeRecordList);
 
 	Tcl_SetObjResult(interp, listObj);
 	return TCL_OK;
