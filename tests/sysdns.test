@@ -8,7 +8,11 @@ if {[lsearch [namespace children] ::tcltest] == -1} {
 
 package require sysdns
 
-test ns-1.1 {Querying for nameservers} -body {
+test ns-1.1 {[nameservers] accepts no arguments} -body {
+	::sysdns::nameservers foo
+} -returnCodes error -result {wrong # args: should be "::sysdns::nameservers"}
+
+test ns-1.2 {Querying for nameservers} -body {
 	foreach addr [::sysdns::nameservers] {
 		if {![regexp {^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$} $addr]} {
 			return -code error "Not an IPv4 address: $addr"
