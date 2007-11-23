@@ -1,0 +1,22 @@
+# Commands covered:  ::sysdns::*
+# $Id$
+
+if {[lsearch [namespace children] ::tcltest] == -1} {
+    package require tcltest
+    namespace import ::tcltest::*
+}
+
+package require sysdns
+
+test ns-1.1 {Querying for nameservers} -body {
+	foreach addr [::sysdns::nameservers] {
+		if {![regexp {^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$} $addr]} {
+			return -code error "Not an IPv4 address: $addr"
+		}
+	}
+} -result {}
+
+
+# cleanup
+::tcltest::cleanupTests
+return

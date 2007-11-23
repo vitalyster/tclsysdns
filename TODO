@@ -1,0 +1,21 @@
+$Id$
+
+HIGH:
+
+* Test DnsQueryConfig() on various platforms.
+
+* Bring MinGW support in sync.
+
+* Implement DnsQuery() on Win32.
+
+* Start implementing libresolv part.
+
+NORMAL:
+
+LOW:
+
+* What's with DNS support on Win9x/WinNT?
+
+* Create simple release packaging facilities.
+
+# vim:tw=64:noet
