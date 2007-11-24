@@ -149,16 +149,23 @@ NewStringObjFromIP4Addr (
 
 int
 Impl_Query (
-	Tcl_Interp *interp
+	Tcl_Interp *interp,
+	Tcl_Obj *queryObj,
+	Tcl_Obj *typeObj
 	)
 {
+	WORD type;
 	DNS_STATUS res;
 	PDNS_RECORD recPtr, chunkPtr;
 	Tcl_Obj *listObj;
 
+	if (DNSRRTypeMnemonicToIndex(interp, typeObj, &type) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
 	res = DnsQuery_UTF8(
-		"jabber.ru.",
-		DNS_TYPE_A,
+		Tcl_GetStringFromObj(queryObj, NULL),
+		type,
 		DNS_QUERY_STANDARD,
 		NULL,
 		&recPtr,
@@ -180,7 +187,7 @@ Impl_Query (
 		chunkPtr = chunkPtr->pNext;
 	}
 
-	DnsRecordListFree(recPtr, DnsFreeRecordList);
+	DnsFree(recPtr, DnsFreeRecordList);
 
 	Tcl_SetObjResult(interp, listObj);
 	return TCL_OK;

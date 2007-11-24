@@ -16,7 +16,13 @@ Sysdns_Query (
 	Tcl_Obj *const objv[]
 	)
 {
-	return Impl_Query(interp);
+	if (objc < 2) {
+		Tcl_WrongNumArgs(interp, 1, objv,
+				"query ?options?");
+		return TCL_ERROR;
+	}
+
+	return Impl_Query(interp, objv[1], Tcl_NewStringObj("A", -1));
 }
 
 static int

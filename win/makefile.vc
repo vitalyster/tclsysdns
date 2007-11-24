@@ -169,6 +169,7 @@ STUBPREFIX      = $(PROJECT)stub
 DLLOBJS = \
 	$(TMP_DIR)\tclsysdns.obj \
 	$(TMP_DIR)\windns.obj \
+	$(TMP_DIR)\dnsrrtypes.obj \
 !if !$(STATIC_BUILD)
 	$(TMP_DIR)\sysdns.res
 !endif

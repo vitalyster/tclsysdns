@@ -9,10 +9,18 @@
 #include <tcl.h>
 
 int
+DNSRRTypeMnemonicToIndex (
+	Tcl_Interp *interp,
+	Tcl_Obj *mnemonicObj,
+	unsigned short *typePtr);
+
+int
 Impl_GetNameservers (
 	Tcl_Interp *interp);
 
 int
 Impl_Query (
-	Tcl_Interp *interp);
+	Tcl_Interp *interp,
+	Tcl_Obj *queryObj,
+	Tcl_Obj *typeObj);
 
