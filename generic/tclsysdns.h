@@ -11,7 +11,7 @@
 int
 DNSRRTypeMnemonicToIndex (
 	Tcl_Interp *interp,
-	Tcl_Obj *mnemonicObj,
+	Tcl_Obj *rrTypeObj,
 	unsigned short *typePtr);
 
 int
@@ -22,5 +22,6 @@ int
 Impl_Query (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	Tcl_Obj *typeObj);
+	Tcl_Obj *typeObj,
+	Tcl_Obj *classObj);
 

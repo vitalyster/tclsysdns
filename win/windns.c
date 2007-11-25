@@ -151,7 +151,8 @@ int
 Impl_Query (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	Tcl_Obj *typeObj
+	Tcl_Obj *typeObj,
+	Tcl_Obj *classObj
 	)
 {
 	WORD type;
@@ -181,8 +182,20 @@ Impl_Query (
 	chunkPtr = recPtr;
 	while (chunkPtr != NULL) {
 		if (chunkPtr->Flags.S.Section == DnsSectionAnswer) {
-			Tcl_ListObjAppendElement(interp, listObj,
-					NewStringObjFromIP4Addr(chunkPtr->Data.A.IpAddress));
+			switch (type) {
+				case DNS_TYPE_A:
+					Tcl_ListObjAppendElement(interp, listObj,
+							NewStringObjFromIP4Addr(chunkPtr->Data.A.IpAddress));
+					break;
+				case DNS_TYPE_SRV:
+					Tcl_ListObjAppendElement(interp, listObj,
+							Tcl_NewStringObj(chunkPtr->Data.SRV.pNameTarget, -1));
+					break;
+				default:
+					Tcl_SetResult(interp, "Not implemented", TCL_STATIC);
+					DnsFree(recPtr, DnsFreeRecordList);
+					return TCL_ERROR;
+			}
 		}
 		chunkPtr = chunkPtr->pNext;
 	}

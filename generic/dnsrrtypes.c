@@ -28,35 +28,34 @@ static const char *map[] = {
 	/* Block 3: IANA "query only" types, codes: 248..255
 	 * Indices: 45..53 */
 	"ADDRS", "TKEY", "TSIG", "IXFR", "AXFR",
-	"MAILB", "MAILA", "ANY", "ALL" /* alias to "ANY" */,
+	"MAILB", "MAILA", "ANY", "ALL", /* alias to "ANY" */
 
 	/* Block 4: Microsoft private, codes: 0xFF01..0xFF02
 	 * Indices: 54..56 */
-	"WINS", "WINSR", "NBSTAT" /* alias to "WINSR" */
+	"WINS", "WINSR", "NBSTAT", /* alias to "WINSR" */
+
+	NULL
 };
 
 int
 DNSRRTypeMnemonicToIndex (
 	Tcl_Interp *interp,
-	Tcl_Obj *mnemonicObj,
+	Tcl_Obj *rrTypeObj,
 	unsigned short *typePtr
 	)
 {
-	Tcl_Obj *upperObj;
+	Tcl_Obj *keyObj;
 	int ix;
 
 	/* Make mnemonic uppercase */
-	if (Tcl_IsShared(mnemonicObj)) {
-		upperObj = Tcl_DuplicateObj(mnemonicObj);
-	} else {
-		upperObj = mnemonicObj;
-	}
-	Tcl_UtfToUpper(Tcl_GetStringFromObj(upperObj, NULL));
+	keyObj = Tcl_DuplicateObj(rrTypeObj);
+	Tcl_IncrRefCount(keyObj);
+	Tcl_UtfToUpper(Tcl_GetStringFromObj(keyObj, NULL));
 
 	/* Lookup RR type by given mnemonic */
-	if (Tcl_GetIndexFromObj(interp, upperObj, map, "query type",
+	if (Tcl_GetIndexFromObj(interp, keyObj, map, "DNS RR type",
 			TCL_EXACT, &ix) != TCL_OK) {
-		Tcl_DecrRefCount(upperObj);
+		Tcl_DecrRefCount(keyObj);
 		return TCL_ERROR;
 	}
 
@@ -71,10 +70,10 @@ DNSRRTypeMnemonicToIndex (
 	if (ix < 41) {
 		/* Block 1 */
 		*typePtr = ix + 1;
-	} if (41 >= ix && ix <= 44) {
+	} else if (41 <= ix && ix <= 44) {
 		/* Block 2 */
 		*typePtr = 100 + (ix - 41);
-	} else if (45 >= ix && ix <= 53) {
+	} else if (45 <= ix && ix <= 53) {
 		/* Block 3 */
 		*typePtr = 248 + (ix - 45);
 	} else {
@@ -82,7 +81,7 @@ DNSRRTypeMnemonicToIndex (
 		*typePtr = 0xFF01 + (ix - 54);
 	}
 
-	Tcl_DecrRefCount(upperObj);
+	Tcl_DecrRefCount(keyObj);
 	return TCL_OK;
 }
 

@@ -2,15 +2,26 @@ $Id$
 
 HIGH:
 
-* Test DnsQueryConfig() on various platforms.
+* Move resolution of DNS RR type mnemonics to the new file
+  "dnsparams.c", add resolution of DNS classes there.
+
+* Bring the list of DNS RR types in sync with
+  http://www.iana.org/assignments/dns-parameters
+  (seems like VC defines several types that are unusable
+  in queries and thus should be avoided).
+
+* Implement facility to provide "template" Tcl lists for
+  representing results of DNS queries and procs to "instantiate"
+  such lists by providing Tcl_Objs for "template placeholders".
+
+* Investigate why one additional bogus (?) IP is returned
+  for the "A" RR for the "www.gnu.org" query on Win32.
+
+NORMAL:
 
 * Bring MinGW support in sync.
 
-* Implement DnsQuery() on Win32.
-
 * Start implementing libresolv part.
-
-NORMAL:
 
 LOW:
 
