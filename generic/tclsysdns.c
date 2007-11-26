@@ -7,19 +7,20 @@
 
 #include <tcl.h>
 #include "tclsysdns.h"
+#include "dnsparams.h"
 
 static int
-Sysdns_Query (
+Sysdns_Resolve (
 	ClientData clientData,
 	Tcl_Interp *interp,
 	int objc,
 	Tcl_Obj *const objv[]
 	)
 {
-	const char *optnames[] = { "-type", "-class", NULL };
-	typedef enum { OPT_TYPE, OPT_CLASS } opts_t;
-	int opt, i, res;
-	Tcl_Obj *rrTypeObj, *classObj;
+	const char *optnames[] = { "-class", "-type", NULL };
+	typedef enum { OPT_CLASS, OPT_TYPE } opts_t;
+	int opt, i;
+	unsigned short dsclass, rrtype;
 
 	if (objc < 2) {
 		Tcl_WrongNumArgs(interp, 1, objv,
@@ -27,8 +28,8 @@ Sysdns_Query (
 		return TCL_ERROR;
 	}
 
-	rrTypeObj = NULL;
-	classObj  = NULL;
+	dsclass = 1; /* default domain system class: "IN" */
+	rrtype  = 1; /* default DNS RR type: "A" */
 
 	for (i = 2; i < objc; ) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
@@ -37,16 +38,6 @@ Sysdns_Query (
 		}
 
 		switch ((opts_t) opt) {
-			case OPT_TYPE:
-				if (i == objc - 1) {
-					Tcl_SetResult(interp,
-							"wrong # args: option \"-type\" "
-							"requires an argument", TCL_STATIC);
-					return TCL_ERROR;
-				}
-				rrTypeObj = objv[i + 1];
-				i += 2;
-				break;
 			case OPT_CLASS:
 				if (i == objc - 1) {
 					Tcl_SetResult(interp,
@@ -54,26 +45,29 @@ Sysdns_Query (
 							"requires an argument", TCL_STATIC);
 					return TCL_ERROR;
 				}
-				classObj = objv[i + 1];
+				if (DNSClassMnemonicToIndex(interp,
+							objv[i + 1], &dsclass) != TCL_OK) {
+					return TCL_ERROR;
+				}
+				i += 2;
+				break;
+			case OPT_TYPE:
+				if (i == objc - 1) {
+					Tcl_SetResult(interp,
+							"wrong # args: option \"-type\" "
+							"requires an argument", TCL_STATIC);
+					return TCL_ERROR;
+				}
+				if (DNSRRTypeMnemonicToIndex(interp,
+							objv[i + 1], &rrtype) != TCL_OK) {
+					return TCL_ERROR;
+				}
 				i += 2;
 				break;
 		}
 	}
 
-	if (rrTypeObj == NULL) {
-		rrTypeObj = Tcl_NewStringObj("A", -1);
-	}
-	Tcl_IncrRefCount(rrTypeObj);
-	if (classObj == NULL) {
-		classObj = Tcl_NewStringObj("IN", -1);
-	}
-	Tcl_IncrRefCount(classObj);
-
-	res = Impl_Query(interp, objv[1], rrTypeObj, classObj);
-
-	Tcl_DecrRefCount(rrTypeObj);
-	Tcl_DecrRefCount(classObj);
-	return res;
+	return Impl_Resolve(interp, objv[1], dsclass, rrtype);
 }
 
 static int
@@ -97,6 +91,9 @@ Sysdns_Nameservers (
 #define TCL_STORAGE_CLASS DLLEXPORT
 #endif /* BUILD_sysdns */
 
+#define _COMMAND(cmd) #cmd
+#define COMMAND(cmd) _COMMAND(::PACKAGE_NAME::cmd)
+
 EXTERN int
 Sysdns_Init(Tcl_Interp * interp)
 {
@@ -109,10 +106,10 @@ Sysdns_Init(Tcl_Interp * interp)
 		return TCL_ERROR;
 	}
 
-	Tcl_CreateObjCommand(interp, "::sysdns::query",
-			Sysdns_Query,
+	Tcl_CreateObjCommand(interp, COMMAND(resolve),
+			Sysdns_Resolve,
 			(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-	Tcl_CreateObjCommand(interp, "::sysdns::nameservers",
+	Tcl_CreateObjCommand(interp, COMMAND(nameservers),
 			Sysdns_Nameservers,
 			(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 

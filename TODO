@@ -26,6 +26,7 @@ LOW:
   to re-read /etc/resolv.conf, etc.
 
 * When resolver is ready, possibly look at ADNS.
+  Same for libdnsres (http://monkey.org/~provos/libdnsres/).
 
 * What's with DNS support on Win9x/WinNT?
 

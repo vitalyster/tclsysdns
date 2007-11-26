@@ -23,32 +23,31 @@ Impl_GetNameservers (
 }
 
 int
-Impl_Query (
+Impl_Resolve (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	Tcl_Obj *typeObj,
-	Tcl_Obj *classObj
+	unsigned short dsclass,
+	unsigned short rrtype
 )
 {
 	/*
 	 * int res_query(const char *dname, int class, int type,
 	 *               unsigned char *answer, int anslen);
 	 */
-	unsigned char *answPtr;
+	unsigned char answer[4096];
 	int len, rc, i;
 	ns_msg msg;
 	ns_rr rr;
 
-	answPtr = (unsigned char *) ckalloc(4096);
 	errno = 0;
-	len = res_search(Tcl_GetString(queryObj), 1, 1, answPtr, 4096);
+	len = res_search(Tcl_GetString(queryObj), dsclass, rrtype, answer, sizeof(answer));
 	if (len == -1) {
 		/* TODO actually, the errno is set here */
 		Tcl_SetResult(interp, "Unknown error", TCL_STATIC);
 		return TCL_ERROR;
 	}
 
-	if (ns_initparse(answPtr, len, &msg) != 0) {
+	if (ns_initparse(answer, len, &msg) != 0) {
 		/* TODO actually, the errno is set here */
 		Tcl_SetResult(interp, "Failed to parse request", TCL_STATIC);
 		return TCL_ERROR;
@@ -67,7 +66,6 @@ Impl_Query (
 	}
 
 	Tcl_SetObjResult(interp, Tcl_NewIntObj(len));
-	ckfree((char *) answPtr);
 	return TCL_OK;
 }
 

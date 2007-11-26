@@ -8,7 +8,50 @@
 
 #include <tcl.h>
 
-static const char *map[] = {
+static const char *classmap[] = {
+	"IN", /* 1 */
+	/* 2 is unassigned */
+	"CS", /* 3 */
+	"HS", /* 4 */
+	NULL
+};
+
+
+int
+DNSClassMnemonicToIndex (
+	Tcl_Interp *interp,
+	Tcl_Obj *classObj,
+	unsigned short *classPtr
+	)
+{
+	Tcl_Obj *keyObj;
+	int ix;
+
+	/* Make mnemonic uppercase */
+	keyObj = Tcl_DuplicateObj(classObj);
+	Tcl_IncrRefCount(keyObj);
+	Tcl_UtfToUpper(Tcl_GetStringFromObj(keyObj, NULL));
+
+	/* Lookup RR type by given mnemonic */
+	if (Tcl_GetIndexFromObj(interp, keyObj, classmap, "domain system class",
+			TCL_EXACT, &ix) != TCL_OK) {
+		Tcl_DecrRefCount(keyObj);
+		return TCL_ERROR;
+	}
+
+	/* Remap indices */
+	if (ix == 0) {
+		*classPtr = 1;
+	} else {
+		*classPtr = ix + 2;
+	}
+
+	Tcl_DecrRefCount(keyObj);
+	return TCL_OK;
+}
+
+
+static const char *typemap[] = {
 	/* Block 1: IANA basic */
 	/* RFC 1034/1035, codes: 1..41
 	 * Indices: 0..40 */
@@ -37,6 +80,7 @@ static const char *map[] = {
 	NULL
 };
 
+
 int
 DNSRRTypeMnemonicToIndex (
 	Tcl_Interp *interp,
@@ -53,7 +97,7 @@ DNSRRTypeMnemonicToIndex (
 	Tcl_UtfToUpper(Tcl_GetStringFromObj(keyObj, NULL));
 
 	/* Lookup RR type by given mnemonic */
-	if (Tcl_GetIndexFromObj(interp, keyObj, map, "DNS RR type",
+	if (Tcl_GetIndexFromObj(interp, keyObj, typemap, "DNS RR type",
 			TCL_EXACT, &ix) != TCL_OK) {
 		Tcl_DecrRefCount(keyObj);
 		return TCL_ERROR;

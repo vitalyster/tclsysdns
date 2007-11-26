@@ -13,9 +13,9 @@ Impl_GetNameservers (
 	Tcl_Interp *interp);
 
 int
-Impl_Query (
+Impl_Resolve (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	Tcl_Obj *typeObj,
-	Tcl_Obj *classObj);
+	unsigned short dsclass,
+	unsigned short rrtype);
 
