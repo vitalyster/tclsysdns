@@ -91,9 +91,6 @@ Sysdns_Nameservers (
 #define TCL_STORAGE_CLASS DLLEXPORT
 #endif /* BUILD_sysdns */
 
-#define _COMMAND(cmd) #cmd
-#define COMMAND(cmd) _COMMAND(::PACKAGE_NAME::cmd)
-
 EXTERN int
 Sysdns_Init(Tcl_Interp * interp)
 {
@@ -106,10 +103,10 @@ Sysdns_Init(Tcl_Interp * interp)
 		return TCL_ERROR;
 	}
 
-	Tcl_CreateObjCommand(interp, COMMAND(resolve),
+	Tcl_CreateObjCommand(interp, "::sysdns::resolve",
 			Sysdns_Resolve,
 			(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
-	Tcl_CreateObjCommand(interp, COMMAND(nameservers),
+	Tcl_CreateObjCommand(interp, "::sysdns::nameservers",
 			Sysdns_Nameservers,
 			(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
 

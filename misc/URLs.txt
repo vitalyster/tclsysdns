@@ -16,3 +16,6 @@ http://www.experts-exchange.com/Programming/Languages/C/Q_20799912.html
 ADNS:
 http://www.chiark.greenend.org.uk/~ian/adns/
 
+"DNS Messages" from the "DNS and BIND pro" book:
+http://www.zytrax.com/books/dns/ch15/
+
