@@ -6,3 +6,13 @@ http://www.blushingpenguin.com/cgi-bin/trac.cgi/browser/trunk/OW32/source/AsyncR
 
 IANA DNS parameters:
 http://www.iana.org/assignments/dns-parameters
+
+O'Reilly "DNS and BIND" book, chapter on resolver programming:
+http://www.unix.org.ua/orelly/networking/dnsbind/ch14_02.htm
+
+Example of using ns_* resolver interface:
+http://www.experts-exchange.com/Programming/Languages/C/Q_20799912.html
+
+ADNS:
+http://www.chiark.greenend.org.uk/~ian/adns/
+

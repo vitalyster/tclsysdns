@@ -2,9 +2,6 @@ $Id$
 
 HIGH:
 
-* Move resolution of DNS RR type mnemonics to the new file
-  "dnsparams.c", add resolution of DNS classes there.
-
 * Bring the list of DNS RR types in sync with
   http://www.iana.org/assignments/dns-parameters
   (seems like VC defines several types that are unusable
@@ -21,9 +18,14 @@ NORMAL:
 
 * Bring MinGW support in sync.
 
-* Start implementing libresolv part.
+* Rename [query] to [resolve] to be more line Tcllib's dns.
 
 LOW:
+
+* Provide script-level command which will call res_init()
+  to re-read /etc/resolv.conf, etc.
+
+* When resolver is ready, possibly look at ADNS.
 
 * What's with DNS support on Win9x/WinNT?
 

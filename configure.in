@@ -19,7 +19,7 @@ dnl	to configure the system for the local environment.
 # so you can encode the package version directly into the source files.
 #-----------------------------------------------------------------------
 
-AC_INIT([sample], [0.5])
+AC_INIT([sysdns], [0.1])
 
 #--------------------------------------------------------------------
 # Call TEA_INIT as the first TEA_ macro to set up initial vars.
@@ -71,9 +71,9 @@ TEA_SETUP_COMPILER
 # and PKG_TCL_SOURCES.
 #-----------------------------------------------------------------------
 
-TEA_ADD_SOURCES([sample.c tclsample.c])
+TEA_ADD_SOURCES([tclsysdns.c dnsparams.c])
 TEA_ADD_HEADERS([])
-TEA_ADD_INCLUDES([])
+TEA_ADD_INCLUDES([-I generic])
 TEA_ADD_LIBS([])
 TEA_ADD_CFLAGS([])
 TEA_ADD_STUB_SOURCES([])
@@ -97,17 +97,40 @@ TEA_ADD_TCL_SOURCES([])
 # and change Makefile.in to move it from CONFIG_CLEAN_FILES to BINARIES var.
 #CLEANFILES="pkgIndex.tcl"
 if test "${TEA_PLATFORM}" = "windows" ; then
-    AC_DEFINE(BUILD_sample, 1, [Build windows export dll])
+    AC_DEFINE(BUILD_sysdns, 1, [Build windows export dll])
     CLEANFILES="$CLEANFILES *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
     #TEA_ADD_SOURCES([win/winFile.c])
     #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
-else
-    # Ensure no empty else clauses
-    :
-    #TEA_ADD_SOURCES([unix/unixFile.c])
-    #TEA_ADD_LIBS([-lsuperfly])
 fi
 AC_SUBST(CLEANFILES)
+
+#--------------------------------------------------------------------
+# Selection of the facility for performing DNS RR resolution requests.
+# resolver and lwres are supported, resolver is the default.
+#--------------------------------------------------------------------
+if test "${TEA_PLATFORM}" = "unix" ; then
+	AC_MSG_CHECKING([what facility to use for DNS RR resolution])
+	AC_ARG_ENABLE(lwres,
+		AC_HELP_STRING([--enable-lwres],
+			[use lwres for DNS resolution (default: no)]),
+			[use_lwres=$enableval], [use_lwres=no])
+
+	if test "$use_lwres+set" = "set"; then
+		use_lwres=no
+	fi
+
+	if test "$use_lwres" = "yes" ; then
+		AC_MSG_RESULT([lwres])
+		#AC_DEFINE(USE_LWRES, 1, [Use lwres for DNS resolution])
+		TEA_ADD_SOURCES([unix/lwres.c])
+		TEA_ADD_LIBS([-llwres])
+	else
+		AC_MSG_RESULT([resolv])
+		AC_DEFINE(USE_LWRES, 0)
+		TEA_ADD_SOURCES([unix/resolv.c])
+		TEA_ADD_LIBS([-lresolv])
+	fi
+fi
 
 #--------------------------------------------------------------------
 # __CHANGE__

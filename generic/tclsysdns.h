@@ -9,12 +9,6 @@
 #include <tcl.h>
 
 int
-DNSRRTypeMnemonicToIndex (
-	Tcl_Interp *interp,
-	Tcl_Obj *rrTypeObj,
-	unsigned short *typePtr);
-
-int
 Impl_GetNameservers (
 	Tcl_Interp *interp);
 
