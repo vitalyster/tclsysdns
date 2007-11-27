@@ -101,6 +101,8 @@ if test "${TEA_PLATFORM}" = "windows" ; then
     CLEANFILES="$CLEANFILES *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
     #TEA_ADD_SOURCES([win/winFile.c])
     #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
+else
+	TEA_ADD_SOURCES([unix/dnsmsg.c])
 fi
 AC_SUBST(CLEANFILES)
 
