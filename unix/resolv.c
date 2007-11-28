@@ -17,7 +17,7 @@ Impl_GetNameservers (
 	Tcl_Interp *interp
 	)
 {
-	Tcl_SetObjResult(interp, Tcl_NewListObj(0, NULL));
+	Tcl_ResetResult(interp);
 	return TCL_OK;
 }
 
@@ -29,19 +29,23 @@ Impl_Resolve (
 	unsigned short rrtype
 )
 {
-	/*
-	 * int res_query(const char *dname, int class, int type,
-	 *               unsigned char *answer, int anslen);
-	 */
 	unsigned char answer[4096];
 	int len;
 
-	errno = 0;
-	len = res_search(Tcl_GetString(queryObj), dsclass, rrtype, answer, sizeof(answer));
+	Tcl_SetErrno(0);
+	len = res_search(Tcl_GetString(queryObj), dsclass, rrtype,
+			answer, sizeof(answer));
 	if (len == -1) {
-		/* TODO actually, the errno is set here */
-		Tcl_SetResult(interp, "Unknown error", TCL_STATIC);
-		return TCL_ERROR;
+		int err = Tcl_GetErrno();
+		if (err == 0) {
+			/* No error -- negative query result */
+			Tcl_ResetResult(interp);
+			return TCL_OK;
+		} else {
+			Tcl_SetObjResult(interp,
+					Tcl_NewStringObj(Tcl_PosixError(interp), -1));
+			return TCL_ERROR;
+		}
 	}
 
 	return DNSParseMessage(interp, answer, len);

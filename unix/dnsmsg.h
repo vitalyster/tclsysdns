@@ -10,6 +10,6 @@
 int
 DNSParseMessage (
 	Tcl_Interp *interp,
-	const char msg[],
+	const unsigned char msg[],
 	const int  msglen);
 

@@ -9,8 +9,7 @@
 #include <netinet/in.h>
 #include <arpa/nameser.h>
 #include <resolv.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <errno.h>
 
 /* DNS query message format as per RFC 1035:
 
@@ -75,6 +74,10 @@ typedef enum {
 	__REFUSED       = 5
 } dns_msg_rcode;
 
+#define DNSMSG_INT16_SIZE  (sizeof(unsigned short))
+#define DNSMSG_INT32_SIZE  (sizeof(unsigned long))
+#define DNSMSG_HEADER_SIZE (6 * sizeof(unsigned short))
+
 typedef struct {
 	unsigned short ID;
 	int QR;
@@ -89,6 +92,14 @@ typedef struct {
 	unsigned short NSCOUNT;
 	unsigned short ARCOUNT;
 } dns_msg_header;
+
+typedef struct {
+	char name[256];
+	unsigned short type;
+	unsigned short class;
+	unsigned long  ttl;
+	unsigned short rdlength;
+} dns_msg_rr;
 
 typedef struct {
 	const unsigned char *start;
@@ -122,12 +133,23 @@ dns_msg_int16 (
 {
 	unsigned short res;
 	res = ((unsigned short) mh->cur[0] << 8) | (unsigned short) mh->cur[1];
-	mh->cur = mh->cur + 2;
+	mh->cur = mh->cur + DNSMSG_INT16_SIZE;
 	return res;
 }
 
-#define DNSMSG_INT16_SIZE  (sizeof(unsigned short))
-#define DNSMSG_HEADER_SIZE (6 * sizeof(unsigned short))
+static unsigned long
+dns_msg_int32 (
+	dns_msg_handle *const mh
+	)
+{
+	unsigned long res;
+	res = ((unsigned long) mh->cur[0] << 24)
+		| ((unsigned long) mh->cur[1] << 16)
+		| ((unsigned long) mh->cur[2] << 8)
+		| ((unsigned long) mh->cur[3]);
+	mh->cur = mh->cur + DNSMSG_INT32_SIZE;
+	return res;
+}
 
 static int
 DNSMsgParseHeader (
@@ -167,6 +189,36 @@ DNSMsgParseHeader (
 }
 
 static int
+DNSMsgExpandName (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	char name[],
+	int *namelen
+	)
+{
+	Tcl_SetErrno(0);
+	*namelen = dn_expand(mh->start, mh->end, mh->cur, name, *namelen);
+	if (*namelen < 0) {
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(Tcl_PosixError(interp), -1));
+		return TCL_ERROR;
+	}
+
+	dns_msg_adv(mh, *namelen);
+
+	return TCL_OK;
+}
+
+static void
+DNSMsgSetPosixError (
+	Tcl_Interp *interp,
+	int errcode
+	)
+{
+	Tcl_SetErrno(errcode);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(Tcl_PosixError(interp), -1));
+}
+
+static int
 DNSMsgParseQuestion (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
@@ -177,39 +229,105 @@ DNSMsgParseQuestion (
 	char name[256];
 	unsigned short qtype, qclass;
 
-	/*
-		int dn_expand(unsigned char *msg, unsigned char *eomorig,
-		unsigned char *comp_dn, unsigned char *exp_dn, int length);
-	*/
-
-	namelen = dn_expand(mh->start, mh->end, mh->cur, name, sizeof(name));
-	if (namelen < 0) {
-		Tcl_SetResult(interp, "Premature end of DNS message", TCL_STATIC);
+	namelen = sizeof(name);
+	if (DNSMsgExpandName(interp, mh, name, &namelen) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
 	if (dns_msg_rem(mh) < 2 * DNSMSG_INT16_SIZE) {
-		Tcl_SetResult(interp, "Premature end of DNS message", TCL_STATIC);
+		DNSMsgSetPosixError(interp, EBADMSG);
 		return TCL_ERROR;
 	}
-
-	dns_msg_adv(mh, namelen);
 
 	qtype  = dns_msg_int16(mh);
 	qclass = dns_msg_int16(mh);
 
 	if (resObj != NULL) {
 		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewIntObj(namelen));
+				Tcl_NewStringObj("section", -1));
+		Tcl_ListObjAppendElement(interp, resObj,
+				Tcl_NewStringObj("question", -1));
+		Tcl_ListObjAppendElement(interp, resObj,
+				Tcl_NewStringObj("name", -1));
 		Tcl_ListObjAppendElement(interp, resObj,
 				Tcl_NewStringObj(name, -1));
 		Tcl_ListObjAppendElement(interp, resObj,
+				Tcl_NewStringObj("qtype", -1));
+		Tcl_ListObjAppendElement(interp, resObj,
 				Tcl_NewIntObj(qtype));
+		Tcl_ListObjAppendElement(interp, resObj,
+				Tcl_NewStringObj("qclass", -1));
 		Tcl_ListObjAppendElement(interp, resObj,
 				Tcl_NewIntObj(qclass));
 	}
 
 	return TCL_OK;
+}
+
+static int
+DNSMsgParseRR (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	dns_msg_rr *rr
+	)
+{
+	int namelen;
+
+	namelen = sizeof(rr->name);
+	if (DNSMsgExpandName(interp, mh, rr->name, &namelen) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
+	if (dns_msg_rem(mh) < 3 * DNSMSG_INT16_SIZE + DNSMSG_INT32_SIZE) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	rr->type     = dns_msg_int16(mh);
+	rr->class    = dns_msg_int16(mh);
+	rr->ttl      = dns_msg_int32(mh);
+	rr->rdlength = dns_msg_int16(mh);
+
+	return TCL_OK;
+}
+
+static void
+DNSFormatRR (
+	Tcl_Interp *interp,
+	const char *section,
+	dns_msg_rr *rr,
+	Tcl_Obj *resObj
+	)
+{
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj("section", -1));
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj(section, -1));
+
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj("name", -1));
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj(rr->name, -1));
+
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj("type", -1));
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewIntObj(rr->type));
+
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj("class", -1));
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewIntObj(rr->class));
+
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj("ttl", -1));
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewIntObj(rr->ttl));
+
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj("rdlength", -1));
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewIntObj(rr->rdlength));
 }
 
 int
@@ -220,7 +338,8 @@ DNSParseMessage (
 	)
 {
 	dns_msg_handle handle;
-	Tcl_Obj *questObj;
+	Tcl_Obj *resObj;
+	int i;
 
 	handle.start = msg;
 	handle.cur   = msg;
@@ -231,13 +350,67 @@ DNSParseMessage (
 		return TCL_ERROR;
 	}
 
-	questObj = Tcl_NewListObj(0, NULL);
-	if (DNSMsgParseQuestion(interp, &handle, questObj) != TCL_OK) {
-		Tcl_DecrRefCount(questObj);
-		return TCL_ERROR;
+	resObj = Tcl_NewListObj(0, NULL);
+
+	for (i = 0; i < handle.hdr.QDCOUNT; ++i) {
+		Tcl_Obj *questObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, resObj, questObj);
+		if (DNSMsgParseQuestion(interp, &handle, questObj) != TCL_OK) {
+			Tcl_DecrRefCount(resObj);
+			return TCL_ERROR;
+		}
+
 	}
 
-	Tcl_SetObjResult(interp, questObj);
+	for (i = 0; i < handle.hdr.ANCOUNT; ++i) {
+		dns_msg_rr rr;
+		Tcl_Obj *rrObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, resObj, rrObj);
+
+		if (DNSMsgParseRR(interp, &handle, &rr) != TCL_OK) {
+			Tcl_DecrRefCount(rrObj);
+			return TCL_ERROR;
+		}
+
+		/* TODO parse rdata here */
+		dns_msg_adv(&handle, rr.rdlength);
+
+		DNSFormatRR(interp, "answer", &rr, rrObj);
+	}
+
+	for (i = 0; i < handle.hdr.NSCOUNT; ++i) {
+		dns_msg_rr rr;
+		Tcl_Obj *rrObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, resObj, rrObj);
+
+		if (DNSMsgParseRR(interp, &handle, &rr) != TCL_OK) {
+			Tcl_DecrRefCount(rrObj);
+			return TCL_ERROR;
+		}
+
+		/* TODO parse rdata here */
+		dns_msg_adv(&handle, rr.rdlength);
+
+		DNSFormatRR(interp, "authority", &rr, rrObj);
+	}
+
+	for (i = 0; i < handle.hdr.ARCOUNT; ++i) {
+		dns_msg_rr rr;
+		Tcl_Obj *rrObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, resObj, rrObj);
+
+		if (DNSMsgParseRR(interp, &handle, &rr) != TCL_OK) {
+			Tcl_DecrRefCount(rrObj);
+			return TCL_ERROR;
+		}
+
+		/* TODO parse rdata here */
+		dns_msg_adv(&handle, rr.rdlength);
+
+		DNSFormatRR(interp, "additional", &rr, rrObj);
+	}
+
+	Tcl_SetObjResult(interp, resObj);
 	return TCL_OK;
 }
 

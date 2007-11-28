@@ -7,9 +7,11 @@ HIGH:
   (seems like VC defines several types that are unusable
   in queries and thus should be avoided).
 
-* Implement facility to provide "template" Tcl lists for
-  representing results of DNS queries and procs to "instantiate"
-  such lists by providing Tcl_Objs for "template placeholders".
+* Implement reverse mapping facilities for classes and types to
+  their mnemonics -- this is needed for building result sets.
+
+* Factor out functions building intermediate result sets
+  and use them in the Win32 part.
 
 * Investigate why one additional bogus (?) IP is returned
   for the "A" RR for the "www.gnu.org" query on Win32.
@@ -18,7 +20,14 @@ NORMAL:
 
 * Bring MinGW support in sync.
 
-* Rename [query] to [resolve] to be more line Tcllib's dns.
+* Bring lwres part in sync.
+
+* Extensively comment unix/dnsmsg.c when it's stabilized.
+  Explicitly mark mutator functions as being such.
+
+* Result set "templating" seems impossible due to this error:
+  "Tcl_ListObjAppendElement called with shared object"
+  which occurs if we append a shared Tcl_Obj to a list.
 
 LOW:
 
@@ -29,6 +38,12 @@ LOW:
   Same for libdnsres (http://monkey.org/~provos/libdnsres/).
 
 * What's with DNS support on Win9x/WinNT?
+
+* An AIX communications programming reference document
+  http://publib.boulder.ibm.com/infocenter/pseries/v5r3/topic/com.ibm.aix.commtechref/doc/commtrf2/commtrf2.pdf
+  states that in order to use the "dn_expand" resolver
+  command an "_BSD" macro must be defined with values of 43 or
+  44 and the library must be linked against libbsd.a.
 
 * Create simple release packaging facilities.
 
