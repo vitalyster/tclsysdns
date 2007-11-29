@@ -132,7 +132,7 @@ dns_msg_int16 (
 	)
 {
 	unsigned short res;
-	res = ((unsigned short) mh->cur[0] << 8) | (unsigned short) mh->cur[1];
+	res = ntohs(*((unsigned short *) mh->cur));
 	mh->cur = mh->cur + DNSMSG_INT16_SIZE;
 	return res;
 }
@@ -143,10 +143,7 @@ dns_msg_int32 (
 	)
 {
 	unsigned long res;
-	res = ((unsigned long) mh->cur[0] << 24)
-		| ((unsigned long) mh->cur[1] << 16)
-		| ((unsigned long) mh->cur[2] << 8)
-		| ((unsigned long) mh->cur[3]);
+	res = ntohl(*((unsigned long *) mh->cur));
 	mh->cur = mh->cur + DNSMSG_INT32_SIZE;
 	return res;
 }
