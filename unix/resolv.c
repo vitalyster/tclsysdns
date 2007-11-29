@@ -25,8 +25,9 @@ int
 Impl_Resolve (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	unsigned short dsclass,
-	unsigned short rrtype
+	const unsigned short dsclass,
+	const unsigned short rrtype,
+	const unsigned int resflags
 )
 {
 	unsigned char answer[4096];
@@ -48,6 +49,6 @@ Impl_Resolve (
 		}
 	}
 
-	return DNSParseMessage(interp, answer, len);
+	return DNSParseMessage(interp, answer, len, resflags);
 }
 

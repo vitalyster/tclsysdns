@@ -17,10 +17,15 @@ Sysdns_Resolve (
 	Tcl_Obj *const objv[]
 	)
 {
-	const char *optnames[] = { "-class", "-type", NULL };
-	typedef enum { OPT_CLASS, OPT_TYPE } opts_t;
+	const char *optnames[] = { "-class", "-type",
+		"-question", "-answer", "-authority", "-additional", "-all",
+		"-detailed", NULL };
+	typedef enum { OPT_CLASS, OPT_TYPE,
+		OPT_QUESTION, OPT_ANSWER, OPT_AUTH, OPT_ADD, OPT_ALL,
+		OPT_DETAIL } opts_t;
 	int opt, i;
 	unsigned short dsclass, rrtype;
+	unsigned int resflags;
 
 	if (objc < 2) {
 		Tcl_WrongNumArgs(interp, 1, objv,
@@ -28,8 +33,9 @@ Sysdns_Resolve (
 		return TCL_ERROR;
 	}
 
-	dsclass = 1; /* default domain system class: "IN" */
-	rrtype  = 1; /* default DNS RR type: "A" */
+	dsclass  = 1; /* default domain system class: "IN" */
+	rrtype   = 1; /* default DNS RR type: "A" */
+	resflags = 0;
 
 	for (i = 2; i < objc; ) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
@@ -64,10 +70,34 @@ Sysdns_Resolve (
 				}
 				i += 2;
 				break;
+			case OPT_QUESTION:
+				resflags |= RES_QUESTION;
+				++i;
+				break;
+			case OPT_ANSWER:
+				resflags |= RES_ANSWER;
+				++i;
+				break;
+			case OPT_AUTH:
+				resflags |= RES_AUTH;
+				++i;
+				break;
+			case OPT_ADD:
+				resflags |= RES_ADD;
+				++i;
+				break;
+			case OPT_ALL:
+				resflags |= RES_ALL;
+				++i;
+				break;
+			case OPT_DETAIL:
+				resflags |= RES_DETAIL;
+				++i;
+				break;
 		}
 	}
 
-	return Impl_Resolve(interp, objv[1], dsclass, rrtype);
+	return Impl_Resolve(interp, objv[1], dsclass, rrtype, resflags);
 }
 
 static int

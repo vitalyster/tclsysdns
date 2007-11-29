@@ -334,7 +334,8 @@ int
 DNSParseMessage (
 	Tcl_Interp *interp,
 	const unsigned char msg[],
-	const int msglen
+	const int msglen,
+	unsigned int resflags
 	)
 {
 	dns_msg_handle handle;
@@ -355,6 +356,7 @@ DNSParseMessage (
 	for (i = 0; i < handle.hdr.QDCOUNT; ++i) {
 		Tcl_Obj *questObj = Tcl_NewListObj(0, NULL);
 		Tcl_ListObjAppendElement(interp, resObj, questObj);
+
 		if (DNSMsgParseQuestion(interp, &handle, questObj) != TCL_OK) {
 			Tcl_DecrRefCount(resObj);
 			return TCL_ERROR;
