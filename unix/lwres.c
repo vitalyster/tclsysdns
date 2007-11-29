@@ -7,6 +7,7 @@
 
 #include <tcl.h>
 #include <lwres/netdb.h>
+#include <errno.h>
 #include "tclsysdns.h"
 #include "dnsparams.h"
 
@@ -20,40 +21,53 @@ Impl_GetNameservers (
 }
 
 int
-Impl_Query (
+Impl_Resolve (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	Tcl_Obj *typeObj,
-	Tcl_Obj *classObj
-)
+	unsigned short dsclass,
+	unsigned short rrtype
+	)
 {
 	struct rrsetinfo *dataPtr;
 	int res;
 
-	res = lwres_getrrsetbyname(Tcl_GetString(queryObj), 1, 1, 0, &dataPtr);
+	res = lwres_getrrsetbyname(Tcl_GetString(queryObj), dsclass, rrtype, 0, &dataPtr);
 	if (res != 0) {
-		char *error;
+		int error;
+		const char *errmsg, *posixmsg;
+
+		if (res == ERRSET_NODATA) {
+			Tcl_ResetResult(interp);
+			return TCL_OK;
+		}
 		switch (res) {
 			case ERRSET_NONAME:
-				error = "The name does not exist";
-				break;
-			case ERRSET_NODATA:
-				error = "The name exists, but does not have data of the desired type";
+				error  = ENOENT;
+				errmsg = "No DNS resource records of desired type";
 				break;
 			case ERRSET_NOMEMORY:
-				error = "Memory could not be allocated";
+				error  = ENOMEM;
+				errmsg = NULL;
 				break;
 			case ERRSET_INVAL:
-				error = "A parameter is invalid";
+				error  = EINVAL;
+				errmsg = NULL;
 				break;
 			case ERRSET_FAIL:
-				error = "Uncategorized failure";
+				error  = ECANCELED;
+				errmsg = "Unknown failure"
+					" (probably a configuration problem or resolver is down)";
 				break;
 			default:
-				error = "Unknown failure";
-
+				error  = ECANCELED;
+				errmsg = "Unknown error";
 		}
-		Tcl_SetResult(interp, error, TCL_STATIC);
+		Tcl_SetErrno(error);
+		posixmsg = Tcl_PosixError(interp);
+		if (errmsg == NULL) {
+			errmsg = posixmsg;
+		}
+		Tcl_SetObjResult(interp, Tcl_NewStringObj(errmsg, -1));
 		return TCL_ERROR;
 	}
 

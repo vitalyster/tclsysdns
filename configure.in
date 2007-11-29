@@ -102,7 +102,7 @@ if test "${TEA_PLATFORM}" = "windows" ; then
     #TEA_ADD_SOURCES([win/winFile.c])
     #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
 else
-	TEA_ADD_SOURCES([unix/dnsmsg.c])
+	:
 fi
 AC_SUBST(CLEANFILES)
 
@@ -129,7 +129,7 @@ if test "${TEA_PLATFORM}" = "unix" ; then
 	else
 		AC_MSG_RESULT([resolv])
 		AC_DEFINE(USE_LWRES, 0)
-		TEA_ADD_SOURCES([unix/resolv.c])
+		TEA_ADD_SOURCES([unix/resolv.c unix/dnsmsg.c])
 		TEA_ADD_LIBS([-lresolv])
 	fi
 fi
