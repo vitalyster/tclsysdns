@@ -23,7 +23,7 @@ Sysdns_Resolve (
 	typedef enum { OPT_CLASS, OPT_TYPE,
 		OPT_QUESTION, OPT_ANSWER, OPT_AUTH, OPT_ADD, OPT_ALL,
 		OPT_DETAIL } opts_t;
-	int opt, i;
+	int opt, i, sections;
 	unsigned short dsclass, rrtype;
 	unsigned int resflags;
 
@@ -36,6 +36,7 @@ Sysdns_Resolve (
 	dsclass  = 1; /* default domain system class: "IN" */
 	rrtype   = 1; /* default DNS RR type: "A" */
 	resflags = 0;
+	sections = 0;
 
 	for (i = 2; i < objc; ) {
 		if (Tcl_GetIndexFromObj(interp, objv[i],
@@ -72,22 +73,27 @@ Sysdns_Resolve (
 				break;
 			case OPT_QUESTION:
 				resflags |= RES_QUESTION;
+				++sections;
 				++i;
 				break;
 			case OPT_ANSWER:
 				resflags |= RES_ANSWER;
+				++sections;
 				++i;
 				break;
 			case OPT_AUTH:
 				resflags |= RES_AUTH;
+				++sections;
 				++i;
 				break;
 			case OPT_ADD:
 				resflags |= RES_ADD;
+				++sections;
 				++i;
 				break;
 			case OPT_ALL:
 				resflags |= RES_ALL;
+				sections = 5;
 				++i;
 				break;
 			case OPT_DETAIL:
@@ -95,6 +101,12 @@ Sysdns_Resolve (
 				++i;
 				break;
 		}
+	}
+
+	if (sections == 0) {
+		resflags |= RES_ANSWER;
+	} else if (sections > 1) {
+		resflags |= RES_MULTIPLE;
 	}
 
 	return Impl_Resolve(interp, objv[1], dsclass, rrtype, resflags);

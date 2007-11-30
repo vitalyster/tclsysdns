@@ -13,8 +13,9 @@
 #define RES_ANSWER      4
 #define RES_AUTH        8
 #define RES_ADD         16
-#define RES_ALL         (RES_QUESTION | RES_AUTH | RES_ADD)
+#define RES_ALL         (RES_QUESTION | RES_ANSWER | RES_AUTH | RES_ADD)
 #define RES_DETAIL      32
+#define RES_MULTIPLE    64
 
 int
 Impl_GetNameservers (

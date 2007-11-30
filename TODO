@@ -2,6 +2,9 @@ $Id$
 
 HIGH:
 
+* In resolver part, should probably do an early checks to skip
+* parsing of RRs if none of them is needed for result set.
+
 * Bring the list of DNS RR types in sync with
   http://www.iana.org/assignments/dns-parameters
   (seems like VC defines several types that are unusable
