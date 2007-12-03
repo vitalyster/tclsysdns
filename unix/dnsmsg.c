@@ -6,6 +6,7 @@
  */
 
 #include <tcl.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <arpa/nameser.h>
 #include <resolv.h>
@@ -115,7 +116,7 @@ dns_msg_rem (
 	const dns_msg_handle *const mh
 	)
 {
-	return mh->end - mh->cur;
+	return mh->end - mh->cur + 1;
 }
 
 static void
@@ -149,6 +150,16 @@ dns_msg_int32 (
 	return res;
 }
 
+static void
+DNSMsgSetPosixError (
+	Tcl_Interp *interp,
+	int errcode
+	)
+{
+	Tcl_SetErrno(errcode);
+	Tcl_SetObjResult(interp, Tcl_NewStringObj(Tcl_PosixError(interp), -1));
+}
+
 static int
 DNSMsgParseHeader (
 	Tcl_Interp *interp,
@@ -159,8 +170,7 @@ DNSMsgParseHeader (
 	unsigned short flags;
 
 	if (mh->len < DNSMSG_HEADER_SIZE) {
-		Tcl_SetResult(interp,
-				"Premature end of DNS message", TCL_STATIC);
+		DNSMsgSetPosixError(interp, EBADMSG);
 		return TCL_ERROR;
 	}
 
@@ -206,14 +216,140 @@ DNSMsgExpandName (
 	return TCL_OK;
 }
 
-static void
-DNSMsgSetPosixError (
+
+/* Name:
+ *   dns_rrdata_parser
+ *
+ * Purpose:
+ *   Interface for functions implementing parsing of RRDATA field in
+ *   RR sections of DNS query responses.
+ *
+ * Input:
+ *   interp -- pointer to an instance of the Tcl interpreter which is
+ *             used to report possible errors.
+ *   
+ *   mh -- pointer to an instance of the "message handle" structure
+ *         which tracks the state of parsing of a DNS message assotiated
+ *         with it.
+ *         The structure's "current octet" pointer is expected to point
+ *         to the first octed of the RRDATA section of interest.
+ *
+ *   rdlength -- the length of the RRDATA section to parse. May be used
+ *               by the parser for sanity checks.
+ *
+ *   resObjPtr -- pointer to a pointer to a Tcl object representing the
+ *                formatted result of parsing. This parser is expected
+ *                to create a Tcl object of appropriate type, fill it
+ *                with the data and pass the pointer to it back to
+ *                the caller.
+ *
+ * Output:
+ *   The standard Tcl result code: TCL_OK on success, TCL_ERROR otherwise.
+ *   If the parser returns an error it's expected to set the interpreter's
+ *   error info accordingly.
+ *
+ * Side effects:
+ *   The parser will adjust the "current octet" pointer in the message handle
+ *   structure to the octet immediately following the RRDATA it has parsed.
+ */
+typedef int (* dns_rrdata_parser) (
 	Tcl_Interp *interp,
-	int errcode
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	);
+
+static int
+DNSMsgParseRRDomainName (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
 	)
 {
-	Tcl_SetErrno(errcode);
-	Tcl_SetObjResult(interp, Tcl_NewStringObj(Tcl_PosixError(interp), -1));
+	int namelen;
+	char name[256];
+
+	namelen = sizeof(name);
+	if (DNSMsgExpandName(interp, mh, name, &namelen) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
+	*resObjPtr = Tcl_NewStringObj(name, -1);
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRIPv4Addr (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	struct in_addr in;
+
+	if (dns_msg_rem(mh) < DNSMSG_INT32_SIZE) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	in.s_addr = ((unsigned long *) mh->cur)[0];
+	dns_msg_adv(mh, DNSMSG_INT32_SIZE);
+
+	*resObjPtr = Tcl_NewStringObj(inet_ntoa(in), -1);
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseMX (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	int namelen;
+	char name[256];
+
+	if (dns_msg_rem(mh) < DNSMSG_INT16_SIZE) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+	Tcl_ListObjAppendElement(interp, *resObjPtr, Tcl_NewIntObj(dns_msg_int16(mh)));
+
+	namelen = sizeof(name);
+	if (DNSMsgExpandName(interp, mh, name, &namelen) != TCL_OK) {
+		Tcl_DecrRefCount(*resObjPtr);
+		return TCL_ERROR;
+	}
+	Tcl_ListObjAppendElement(interp, *resObjPtr, Tcl_NewStringObj(name, -1));
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRData (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rrtype,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	switch (rrtype) {
+		case  1: /* A */
+			return DNSMsgParseRRIPv4Addr(interp, mh, rdlength, resObjPtr);
+		case  5: /* CNAME */
+			return DNSMsgParseRRDomainName(interp, mh, rdlength, resObjPtr);
+		case 15: /* MX */
+			return DNSMsgParseMX(interp, mh, rdlength, resObjPtr);
+		default:
+			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			return TCL_OK;
+	}
 }
 
 static int
@@ -282,6 +418,11 @@ DNSMsgParseRR (
 	rr->ttl      = dns_msg_int32(mh);
 	rr->rdlength = dns_msg_int16(mh);
 
+	if (dns_msg_rem(mh) < rr->rdlength) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
 	return TCL_OK;
 }
 
@@ -318,6 +459,10 @@ DNSFormatRR (
 			Tcl_NewStringObj("rdlength", -1));
 	Tcl_ListObjAppendElement(interp, resObj,
 			Tcl_NewIntObj(rr->rdlength));
+
+	Tcl_ListObjAppendElement(interp, resObj,
+			Tcl_NewStringObj("rdata", -1));
+	/* Corresponding value will be provided by a call to DNSMsgParseRRData */
 }
 
 int
@@ -386,14 +531,18 @@ DNSParseMessage (
 		}
 
 		if (resflags & RES_ANSWER) {
-			Tcl_Obj *rrObj;
+			Tcl_Obj *rrObj, *dataObj;
 			rrObj = Tcl_NewListObj(0, NULL);
 			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
 			if (resflags & RES_DETAIL) {
 				DNSFormatRR(interp, &rr, rrObj);
 			}
-			/* TODO parse rdata and append it to rrObj */
-			dns_msg_adv(&handle, rr.rdlength);
+			if (DNSMsgParseRRData(interp, &handle, rr.type,
+						rr.rdlength, &dataObj) != TCL_OK) {
+				Tcl_DecrRefCount(resObj);
+				return TCL_ERROR;
+			}
+			Tcl_ListObjAppendElement(interp, rrObj, dataObj);
 		} else {
 			dns_msg_adv(&handle, rr.rdlength);
 		}
@@ -418,14 +567,18 @@ DNSParseMessage (
 		}
 
 		if (resflags & RES_AUTH) {
-			Tcl_Obj *rrObj;
+			Tcl_Obj *rrObj, *dataObj;
 			rrObj = Tcl_NewListObj(0, NULL);
 			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
 			if (resflags & RES_DETAIL) {
 				DNSFormatRR(interp, &rr, rrObj);
 			}
-			/* TODO parse rdata and append it to rrObj */
-			dns_msg_adv(&handle, rr.rdlength);
+			if (DNSMsgParseRRData(interp, &handle, rr.type,
+						rr.rdlength, &dataObj) != TCL_OK) {
+				Tcl_DecrRefCount(resObj);
+				return TCL_ERROR;
+			}
+			Tcl_ListObjAppendElement(interp, rrObj, dataObj);
 		} else {
 			dns_msg_adv(&handle, rr.rdlength);
 		}
@@ -450,14 +603,18 @@ DNSParseMessage (
 		}
 
 		if (resflags & RES_ADD) {
-			Tcl_Obj *rrObj;
+			Tcl_Obj *rrObj, *dataObj;
 			rrObj = Tcl_NewListObj(0, NULL);
 			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
 			if (resflags & RES_DETAIL) {
 				DNSFormatRR(interp, &rr, rrObj);
 			}
-			/* TODO parse rdata and append it to rrObj */
-			dns_msg_adv(&handle, rr.rdlength);
+			if (DNSMsgParseRRData(interp, &handle, rr.type,
+						rr.rdlength, &dataObj) != TCL_OK) {
+				Tcl_DecrRefCount(resObj);
+				return TCL_ERROR;
+			}
+			Tcl_ListObjAppendElement(interp, rrObj, dataObj);
 		} else {
 			dns_msg_adv(&handle, rr.rdlength);
 		}
