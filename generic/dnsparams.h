@@ -6,14 +6,22 @@
  */
 
 int
-DNSClassMnemonicToIndex (
+DNSQClassMnemonicToIndex (
 	Tcl_Interp *interp,
 	Tcl_Obj *classObj,
 	unsigned short *classPtr);
 
+Tcl_Obj *
+DNSQClassIndexToMnemonic (
+	const unsigned short cindex);
+
 int
-DNSRRTypeMnemonicToIndex (
+DNSQTypeMnemonicToIndex (
 	Tcl_Interp *interp,
-	Tcl_Obj *rrTypeObj,
+	Tcl_Obj *typeObj,
 	unsigned short *typePtr);
+
+Tcl_Obj *
+DNSQTypeIndexToMnemonic (
+	const unsigned short type);
 

@@ -25,8 +25,8 @@ int
 Impl_Resolve (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	const unsigned short dsclass,
-	const unsigned short rrtype,
+	const unsigned short qclass,
+	const unsigned short qtype,
 	const unsigned int resflags
 )
 {
@@ -34,7 +34,7 @@ Impl_Resolve (
 	int len;
 
 	Tcl_SetErrno(0);
-	len = res_search(Tcl_GetString(queryObj), dsclass, rrtype,
+	len = res_search(Tcl_GetString(queryObj), qclass, qtype,
 			answer, sizeof(answer));
 	if (len == -1) {
 		int err = Tcl_GetErrno();

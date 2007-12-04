@@ -24,7 +24,7 @@ Sysdns_Resolve (
 		OPT_QUESTION, OPT_ANSWER, OPT_AUTH, OPT_ADD, OPT_ALL,
 		OPT_DETAIL, OPT_DETAIL2 } opts_t;
 	int opt, i, sections;
-	unsigned short dsclass, rrtype;
+	unsigned short qclass, qtype;
 	unsigned int resflags;
 
 	if (objc < 2) {
@@ -33,8 +33,8 @@ Sysdns_Resolve (
 		return TCL_ERROR;
 	}
 
-	dsclass  = 1; /* default domain system class: "IN" */
-	rrtype   = 1; /* default DNS RR type: "A" */
+	qclass  = 1; /* default domain system class: "IN" */
+	qtype   = 1; /* default DNS question type: "A" */
 	resflags = 0;
 	sections = 0;
 
@@ -52,8 +52,8 @@ Sysdns_Resolve (
 							"requires an argument", TCL_STATIC);
 					return TCL_ERROR;
 				}
-				if (DNSClassMnemonicToIndex(interp,
-							objv[i + 1], &dsclass) != TCL_OK) {
+				if (DNSQClassMnemonicToIndex(interp,
+							objv[i + 1], &qclass) != TCL_OK) {
 					return TCL_ERROR;
 				}
 				i += 2;
@@ -65,8 +65,8 @@ Sysdns_Resolve (
 							"requires an argument", TCL_STATIC);
 					return TCL_ERROR;
 				}
-				if (DNSRRTypeMnemonicToIndex(interp,
-							objv[i + 1], &rrtype) != TCL_OK) {
+				if (DNSQTypeMnemonicToIndex(interp,
+							objv[i + 1], &qtype) != TCL_OK) {
 					return TCL_ERROR;
 				}
 				i += 2;
@@ -110,7 +110,7 @@ Sysdns_Resolve (
 		resflags |= RES_MULTIPLE;
 	}
 
-	return Impl_Resolve(interp, objv[1], dsclass, rrtype, resflags);
+	return Impl_Resolve(interp, objv[1], qclass, qtype, resflags);
 }
 
 static int

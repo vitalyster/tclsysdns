@@ -25,7 +25,7 @@ int
 Impl_Resolve (
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
-	const unsigned short dsclass,
-	const unsigned short rrtype,
+	const unsigned short qclass,
+	const unsigned short qtype,
 	const unsigned int resflags);
 

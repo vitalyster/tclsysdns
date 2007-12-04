@@ -260,7 +260,7 @@ typedef int (* dns_rrdata_parser) (
 	);
 
 static int
-DNSMsgParseRRDomainName (
+DNSMsgParseRRDataPTR (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
 	int rdlength,
@@ -280,7 +280,7 @@ DNSMsgParseRRDomainName (
 }
 
 static int
-DNSMsgParseRRIPv4Addr (
+DNSMsgParseRRDataA (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
 	int rdlength,
@@ -302,7 +302,7 @@ DNSMsgParseRRIPv4Addr (
 }
 
 static int
-DNSMsgParseMX (
+DNSMsgParseRRDataMX (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
 	int rdlength,
@@ -331,6 +331,260 @@ DNSMsgParseMX (
 }
 
 static int
+DNSMsgParseRRDataSOA (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataMINFO (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataTXT (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	int read, parts;
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	read  = 0;
+	parts = 0;
+	while (1) {
+		int len;
+
+		if (rdlength - read < 1) {
+			if (parts > 0) break;
+			Tcl_DecrRefCount(*resObjPtr);
+			DNSMsgSetPosixError(interp, EBADMSG);
+			return TCL_ERROR;
+		}
+
+		len = mh->cur[0];
+		dns_msg_adv(mh, 1);
+		++read;
+		if (len > rdlength - read) {
+			Tcl_DecrRefCount(*resObjPtr);
+			DNSMsgSetPosixError(interp, EBADMSG);
+			return TCL_ERROR;
+		}
+
+		Tcl_ListObjAppendElement(interp, *resObjPtr,
+				Tcl_NewStringObj((const char *) mh->cur, len));
+		dns_msg_adv(mh, len);
+		read += len;
+
+		++parts;
+	}
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataNULL (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataWKS (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataAAAA (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataSIG (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataKEY (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataATMA (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataNXT (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataSRV (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataTKEY (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataTSIG (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataWINS (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataWINSR (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataUnknown (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	int rdlength,
+	Tcl_Obj **resObjPtr
+	)
+{
+	*resObjPtr = Tcl_NewByteArrayObj(mh->cur, rdlength);
+	dns_msg_adv(mh, rdlength);
+
+	return TCL_OK;
+}
+
+static int
 DNSMsgParseRRData (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
@@ -341,14 +595,56 @@ DNSMsgParseRRData (
 {
 	switch (rrtype) {
 		case  1: /* A */
-			return DNSMsgParseRRIPv4Addr(interp, mh, rdlength, resObjPtr);
+			return DNSMsgParseRRDataA(interp, mh, rdlength, resObjPtr);
+		case  6: /* SOA */
+			return DNSMsgParseRRDataSOA(interp, mh, rdlength, resObjPtr);
+		case  2: /* NS */
+		case  3: /* MD */
+		case  4: /* MF */
 		case  5: /* CNAME */
-			return DNSMsgParseRRDomainName(interp, mh, rdlength, resObjPtr);
+		case  7: /* MB */
+		case  8: /* MG */
+		case  9: /* MR */
+		case 12: /* PTR */
+			return DNSMsgParseRRDataPTR(interp, mh, rdlength, resObjPtr);
+		case 14: /* MINFO */
+		case 17: /* RP */
+			return DNSMsgParseRRDataMINFO(interp, mh, rdlength, resObjPtr);
 		case 15: /* MX */
-			return DNSMsgParseMX(interp, mh, rdlength, resObjPtr);
+		case 18: /* AFSDB */
+		case 21: /* RT */
+			return DNSMsgParseRRDataMX(interp, mh, rdlength, resObjPtr);
+		case 13: /* HINFO */
+		case 16: /* TXT */
+		case 19: /* X25 */
+		case 20: /* ISDN */
+			return DNSMsgParseRRDataTXT(interp, mh, rdlength, resObjPtr);
+		case 10: /* NULL */
+			return DNSMsgParseRRDataNULL(interp, mh, rdlength, resObjPtr);
+		case 11: /* WKS */
+			return DNSMsgParseRRDataWKS(interp, mh, rdlength, resObjPtr);
+		case 28: /* AAAA */
+			return DNSMsgParseRRDataAAAA(interp, mh, rdlength, resObjPtr);
+		case 24: /* SIG */
+			return DNSMsgParseRRDataSIG(interp, mh, rdlength, resObjPtr);
+		case 25: /* KEY */
+			return DNSMsgParseRRDataKEY(interp, mh, rdlength, resObjPtr);
+		case 34: /* ATMA */
+			return DNSMsgParseRRDataATMA(interp, mh, rdlength, resObjPtr);
+		case 30: /* NXT (obsolete) */
+			return DNSMsgParseRRDataNXT(interp, mh, rdlength, resObjPtr);
+		case 33: /* SRV */
+			return DNSMsgParseRRDataSRV(interp, mh, rdlength, resObjPtr);
+		case 249: /* TKEY */
+			return DNSMsgParseRRDataTKEY(interp, mh, rdlength, resObjPtr);
+		case 250: /* TSIG */
+			return DNSMsgParseRRDataTSIG(interp, mh, rdlength, resObjPtr);
+		case 0xFF01: /* WINS */
+			return DNSMsgParseRRDataWINS(interp, mh, rdlength, resObjPtr);
+		case 0xFF02: /* WINSR, NBSTAT */
+			return DNSMsgParseRRDataWINSR(interp, mh, rdlength, resObjPtr);
 		default:
-			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
-			return TCL_OK;
+			return DNSMsgParseRRDataUnknown(interp, mh, rdlength, resObjPtr);
 	}
 }
 
