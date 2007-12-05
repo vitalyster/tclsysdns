@@ -3,21 +3,28 @@ $Id$
 HIGH:
 
 * In resolver part, should probably do an early checks to skip
-* parsing of RRs if none of them is needed for result set.
+  parsing of RRs if none of them is needed for result set.
 
 * Bring the list of DNS RR types in sync with
   http://www.iana.org/assignments/dns-parameters
   (seems like VC defines several types that are unusable
   in queries and thus should be avoided).
 
-* Implement reverse mapping facilities for classes and types to
-  their mnemonics -- this is needed for building result sets.
+* Study what's happening (libresolv):
+  % ::sysdns::resolve .org -all -details
+  message too long
 
 * Factor out functions building intermediate result sets
   and use them in the Win32 part.
 
 * Investigate why one additional bogus (?) IP is returned
   for the "A" RR for the "www.gnu.org" query on Win32.
+
+* Think of making DNSMsgExpandName() return a pointer to its
+  internal static buffer since a domain name can't exceed 255
+  characters and this name is anyway mostly needed just to
+  be copied to an internal rep of Tcl_StringObj.
+  Allocation of memory in the caller's stack frame is tedious.
 
 NORMAL:
 

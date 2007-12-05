@@ -12,6 +12,7 @@
 #include <resolv.h>
 #include <errno.h>
 #include "tclsysdns.h"
+#include "dnsparams.h"
 
 /* DNS query message format as per RFC 1035:
 
@@ -201,17 +202,24 @@ DNSMsgExpandName (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
 	char name[],
-	int *namelen
+	const int namelen
 	)
 {
+	/* Note that dn_expand returns the length of *original* data it has
+	 * decoded, i.e. it returns the number of bytes to skip over to
+	 * get to the next data fiels, not the number of bytes written
+	 * to the supplied buffer -- the data there is an ASCIIZ string */
+
+	int len;
+
 	Tcl_SetErrno(0);
-	*namelen = dn_expand(mh->start, mh->end, mh->cur, name, *namelen);
-	if (*namelen < 0) {
+	len = dn_expand(mh->start, mh->end, mh->cur, name, namelen);
+	if (len < 0) {
 		Tcl_SetObjResult(interp, Tcl_NewStringObj(Tcl_PosixError(interp), -1));
 		return TCL_ERROR;
 	}
 
-	dns_msg_adv(mh, *namelen);
+	dns_msg_adv(mh, len);
 
 	return TCL_OK;
 }
@@ -267,11 +275,9 @@ DNSMsgParseRRDataPTR (
 	Tcl_Obj **resObjPtr
 	)
 {
-	int namelen;
 	char name[256];
 
-	namelen = sizeof(name);
-	if (DNSMsgExpandName(interp, mh, name, &namelen) != TCL_OK) {
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
@@ -309,7 +315,6 @@ DNSMsgParseRRDataMX (
 	Tcl_Obj **resObjPtr
 	)
 {
-	int namelen;
 	char name[256];
 
 	if (dns_msg_rem(mh) < DNSMSG_INT16_SIZE) {
@@ -318,14 +323,15 @@ DNSMsgParseRRDataMX (
 	}
 
 	*resObjPtr = Tcl_NewListObj(0, NULL);
-	Tcl_ListObjAppendElement(interp, *resObjPtr, Tcl_NewIntObj(dns_msg_int16(mh)));
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewIntObj(dns_msg_int16(mh)));
 
-	namelen = sizeof(name);
-	if (DNSMsgExpandName(interp, mh, name, &namelen) != TCL_OK) {
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
 		Tcl_DecrRefCount(*resObjPtr);
 		return TCL_ERROR;
 	}
-	Tcl_ListObjAppendElement(interp, *resObjPtr, Tcl_NewStringObj(name, -1));
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewStringObj(name, -1));
 
 	return TCL_OK;
 }
@@ -338,8 +344,48 @@ DNSMsgParseRRDataSOA (
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
-	dns_msg_adv(mh, rdlength);
+	char name[256];
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	/* MNAME */
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
+		Tcl_DecrRefCount(*resObjPtr);
+		return TCL_ERROR;
+	}
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewStringObj(name, -1));
+
+	/* RNAME */
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
+		Tcl_DecrRefCount(*resObjPtr);
+		return TCL_ERROR;
+	}
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewStringObj(name, -1));
+
+#if 0
+	if (dns_msg_rem(mh) != 5 * DNSMSG_INT32_SIZE) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+#endif
+
+	/* SERIAL (see also RFC 1982 "Serial Number Arithmetic") */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewWideIntObj(dns_msg_int32(mh)));
+	/* REFRESH */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewLongObj(dns_msg_int32(mh)));
+	/* RETRY */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewLongObj(dns_msg_int32(mh)));
+	/* EXPIRE */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewLongObj(dns_msg_int32(mh)));
+	/* MINIMUM */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewLongObj(dns_msg_int32(mh)));
 
 	return TCL_OK;
 }
@@ -655,12 +701,10 @@ DNSMsgParseQuestion (
 	Tcl_Obj *resObj
 	)
 {
-	int namelen;
 	char name[256];
 	unsigned short qtype, qclass;
 
-	namelen = sizeof(name);
-	if (DNSMsgExpandName(interp, mh, name, &namelen) != TCL_OK) {
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
@@ -697,10 +741,7 @@ DNSMsgParseRR (
 	dns_msg_rr *rr
 	)
 {
-	int namelen;
-
-	namelen = sizeof(rr->name);
-	if (DNSMsgExpandName(interp, mh, rr->name, &namelen) != TCL_OK) {
+	if (DNSMsgExpandName(interp, mh, rr->name, sizeof(rr->name)) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
@@ -739,12 +780,12 @@ DNSFormatRR (
 	Tcl_ListObjAppendElement(interp, resObj,
 			Tcl_NewStringObj("type", -1));
 	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewIntObj(rr->type));
+			DNSQTypeIndexToMnemonic(rr->type));
 
 	Tcl_ListObjAppendElement(interp, resObj,
 			Tcl_NewStringObj("class", -1));
 	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewIntObj(rr->class));
+			DNSQClassIndexToMnemonic(rr->class));
 
 	Tcl_ListObjAppendElement(interp, resObj,
 			Tcl_NewStringObj("ttl", -1));
