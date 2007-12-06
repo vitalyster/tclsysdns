@@ -11,6 +11,7 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <errno.h>
+#include <stdio.h>
 #include "tclsysdns.h"
 #include "dnsparams.h"
 
@@ -205,9 +206,9 @@ DNSMsgExpandName (
 	const int namelen
 	)
 {
-	/* Note that dn_expand returns the length of *original* data it has
+	/* Note that dn_expand() returns the length of *original* data it has
 	 * decoded, i.e. it returns the number of bytes to skip over to
-	 * get to the next data fiels, not the number of bytes written
+	 * move to the next data field, not the number of bytes written
 	 * to the supplied buffer -- the data there is an ASCIIZ string */
 
 	int len;
@@ -364,12 +365,10 @@ DNSMsgParseRRDataSOA (
 	Tcl_ListObjAppendElement(interp, *resObjPtr,
 			Tcl_NewStringObj(name, -1));
 
-#if 0
-	if (dns_msg_rem(mh) != 5 * DNSMSG_INT32_SIZE) {
+	if (dns_msg_rem(mh) < 5 * DNSMSG_INT32_SIZE) {
 		DNSMsgSetPosixError(interp, EBADMSG);
 		return TCL_ERROR;
 	}
-#endif
 
 	/* SERIAL (see also RFC 1982 "Serial Number Arithmetic") */
 	Tcl_ListObjAppendElement(interp, *resObjPtr,
@@ -398,8 +397,25 @@ DNSMsgParseRRDataMINFO (
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
-	dns_msg_adv(mh, rdlength);
+	char name[256];
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	/* RMAILBX */
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
+		Tcl_DecrRefCount(*resObjPtr);
+		return TCL_ERROR;
+	}
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewStringObj(name, -1));
+
+	/* EMAILBX */
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
+		Tcl_DecrRefCount(*resObjPtr);
+		return TCL_ERROR;
+	}
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewStringObj(name, -1));
 
 	return TCL_OK;
 }
@@ -456,7 +472,7 @@ DNSMsgParseRRDataNULL (
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+	*resObjPtr = Tcl_NewByteArrayObj(mh->cur, rdlength);
 	dns_msg_adv(mh, rdlength);
 
 	return TCL_OK;
@@ -470,8 +486,30 @@ DNSMsgParseRRDataWKS (
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
-	dns_msg_adv(mh, rdlength);
+	Tcl_Obj *addrObj;
+
+	if (dns_msg_rem(mh) < DNSMSG_INT32_SIZE + 1) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	/* ADDRESS */
+	if (DNSMsgParseRRDataA(interp, mh, rdlength, &addrObj) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	Tcl_ListObjAppendElement(interp, *resObjPtr, addrObj);
+
+	/* PROTOCOL */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewIntObj(mh->cur[0]));
+	dns_msg_adv(mh, 1);
+
+	/* BIT MAP */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewByteArrayObj(mh->cur, rdlength - DNSMSG_INT32_SIZE - 1));
 
 	return TCL_OK;
 }
@@ -484,8 +522,24 @@ DNSMsgParseRRDataAAAA (
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
-	dns_msg_adv(mh, rdlength);
+	char buf[sizeof("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210")];
+	unsigned short parts[8];
+	int i;
+
+	if (dns_msg_rem(mh) < 8 * DNSMSG_INT16_SIZE) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	for (i = 0; i < 8; ++i) {
+		parts[i] = dns_msg_int16(mh);
+	}
+
+	sprintf(buf, "%x:%x:%x:%x:%x:%x:%x:%x",
+			parts[0], parts[1], parts[2], parts[3],
+			parts[4], parts[5], parts[6], parts[7]);
+
+	*resObjPtr = Tcl_NewStringObj(buf, -1);
 
 	return TCL_OK;
 }
@@ -724,11 +778,11 @@ DNSMsgParseQuestion (
 		Tcl_ListObjAppendElement(interp, resObj,
 				Tcl_NewStringObj("qtype", -1));
 		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewIntObj(qtype));
+				DNSQTypeIndexToMnemonic(qtype));
 		Tcl_ListObjAppendElement(interp, resObj,
 				Tcl_NewStringObj("qclass", -1));
 		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewIntObj(qclass));
+				DNSQClassIndexToMnemonic(qclass));
 	}
 
 	return TCL_OK;

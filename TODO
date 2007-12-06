@@ -2,6 +2,13 @@ $Id$
 
 HIGH:
 
+* (libresolv): investigate why this fails:
+  % ::sysdns::resolve www-secure.ip6.cs.ucl.ac.uk -type aaaa -auth
+  message too long
+  At the first glance it *may* be due to inability of
+  dn_expand() to process "canonical" domain name, which isn't
+  compressed.
+
 * In resolver part, should probably do an early checks to skip
   parsing of RRs if none of them is needed for result set.
 
@@ -9,10 +16,6 @@ HIGH:
   http://www.iana.org/assignments/dns-parameters
   (seems like VC defines several types that are unusable
   in queries and thus should be avoided).
-
-* Study what's happening (libresolv):
-  % ::sysdns::resolve .org -all -details
-  message too long
 
 * Factor out functions building intermediate result sets
   and use them in the Win32 part.
@@ -32,12 +35,30 @@ NORMAL:
 
 * Bring lwres part in sync.
 
+* (dnsmsg.c): boundary checking while parsing RRDATA sections
+  should probably take the rdlength parameter into account.
+
 * Extensively comment unix/dnsmsg.c when it's stabilized.
   Explicitly mark mutator functions as being such.
 
 * Result set "templating" seems impossible due to this error:
   "Tcl_ListObjAppendElement called with shared object"
   which occurs if we append a shared Tcl_Obj to a list.
+
+* Study what's happening (libresolv):
+  % ::sysdns::resolve .org
+  message too long
+  Investigation with dig and host shows that this is just a way
+  of libresolv to report the error in the query string, for
+  instance, both dig and host say:
+  $ dig .org
+  dig: '.org' is not a legal name (empty label)
+  $ host .org
+  host: '.org' is not a legal name (empty label)
+  Seems like no leading dot is allowed (which is quite
+  understandable).
+  What's interesting, is how to make this error more
+  human-readable.
 
 LOW:
 
