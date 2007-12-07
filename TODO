@@ -2,13 +2,6 @@ $Id$
 
 HIGH:
 
-* (libresolv): investigate why this fails:
-  % ::sysdns::resolve www-secure.ip6.cs.ucl.ac.uk -type aaaa -auth
-  message too long
-  At the first glance it *may* be due to inability of
-  dn_expand() to process "canonical" domain name, which isn't
-  compressed.
-
 * In resolver part, should probably do an early checks to skip
   parsing of RRs if none of them is needed for result set.
 
@@ -45,21 +38,6 @@ NORMAL:
   "Tcl_ListObjAppendElement called with shared object"
   which occurs if we append a shared Tcl_Obj to a list.
 
-* Study what's happening (libresolv):
-  % ::sysdns::resolve .org
-  message too long
-  Investigation with dig and host shows that this is just a way
-  of libresolv to report the error in the query string, for
-  instance, both dig and host say:
-  $ dig .org
-  dig: '.org' is not a legal name (empty label)
-  $ host .org
-  host: '.org' is not a legal name (empty label)
-  Seems like no leading dot is allowed (which is quite
-  understandable).
-  What's interesting, is how to make this error more
-  human-readable.
-
 LOW:
 
 * Provide script-level command which will call res_init()
@@ -77,5 +55,32 @@ LOW:
   44 and the library must be linked against libbsd.a.
 
 * Create simple release packaging facilities.
+
+UNCERTAIN:
+
+* Study what's happening (libresolv):
+  % ::sysdns::resolve .org
+  message too long
+  Investigation with dig and host shows that this is just a way
+  of libresolv to report the error in the query string, for
+  instance, both dig and host say:
+  $ dig .org
+  dig: '.org' is not a legal name (empty label)
+  $ host .org
+  host: '.org' is not a legal name (empty label)
+  Seems like no leading dot is allowed (which is quite
+  understandable).
+  What's interesting, is how to make this error more
+  human-readable.
+
+* (libresolv): investigate why this fails:
+  % ::sysdns::resolve www-secure.ip6.cs.ucl.ac.uk -type aaaa -auth
+  message too long
+  At the first glance it *may* be due to inability of
+  dn_expand() to process "canonical" domain name, which isn't
+  compressed.
+  2007-12-07 it suddenly works w/o any changes to the code.
+  dn_expand() is confirmed to expand any <domain-name>s,
+  including non-compressed.
 
 # vim:tw=64:noet
