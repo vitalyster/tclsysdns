@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "tclsysdns.h"
 #include "dnsparams.h"
+#include "resfmt.h"
 
 /* DNS query message format as per RFC 1035:
 
@@ -572,6 +573,14 @@ DNSMsgParseRRDataKEY (
 	return TCL_OK;
 }
 
+/* See:
+ * ATM Address RRDATA format:
+ * http://www.ipmplsforum.org/ftp/pub/approved-specs/af-saa-0069.000.pdf
+ * ISO Network Address format:
+ * http://www.ucs.ed.ac.uk/nsd/docs/legacy/atm-nsaps.html
+ * http://hegel.ittc.ku.edu/projects/gsmp/scott-thesis.ps.gz
+ * (section 2.2.3 "Addressing")
+ * */
 static int
 DNSMsgParseRRDataATMA (
 	Tcl_Interp *interp,
@@ -586,6 +595,7 @@ DNSMsgParseRRDataATMA (
 	return TCL_OK;
 }
 
+/* Obsolete, RFCs 2535, 3755 */
 static int
 DNSMsgParseRRDataNXT (
 	Tcl_Interp *interp,
@@ -594,8 +604,23 @@ DNSMsgParseRRDataNXT (
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
-	dns_msg_adv(mh, rdlength);
+	const unsigned char *endPtr;
+	char name[256];
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	/* Next domain */
+	endPtr = mh->cur + rdlength;
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
+		Tcl_DecrRefCount(*resObjPtr);
+		return TCL_ERROR;
+	}
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewStringObj(name, -1));
+
+	/* Bit map */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewByteArrayObj(mh->cur, rdlength - (endPtr - mh->cur)));
 
 	return TCL_OK;
 }
@@ -608,8 +633,33 @@ DNSMsgParseRRDataSRV (
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
-	dns_msg_adv(mh, rdlength);
+	char name[256];
+
+	/* TODO must be raised (for Target) */
+	if (rdlength < 3 * DNSMSG_INT16_SIZE) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	/* Priority */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewLongObj(dns_msg_int16(mh)));
+	/* Weight */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewLongObj(dns_msg_int16(mh)));
+	/* Port */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewLongObj(dns_msg_int16(mh)));
+
+	/* Target */
+	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
+		Tcl_DecrRefCount(*resObjPtr);
+		return TCL_ERROR;
+	}
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewStringObj(name, -1));
 
 	return TCL_OK;
 }
@@ -642,6 +692,7 @@ DNSMsgParseRRDataTSIG (
 	return TCL_OK;
 }
 
+/* See http://www.watersprings.org/pub/id/draft-levone-dns-wins-lookup-01.txt */
 static int
 DNSMsgParseRRDataWINS (
 	Tcl_Interp *interp,
@@ -654,6 +705,29 @@ DNSMsgParseRRDataWINS (
 	dns_msg_adv(mh, rdlength);
 
 	return TCL_OK;
+
+#if 0
+	if (rdlength < 3 * DNSMSG_INT32_SIZE) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	/* Flag */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewWideIntObj(dns_msg_int32(mh)));
+	/* Lookup timeout */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewWideIntObj(dns_msg_int32(mh)));
+	/* Cache timeout */
+	Tcl_ListObjAppendElement(interp, *resObjPtr,
+			Tcl_NewWideIntObj(dns_msg_int32(mh)));
+
+	/* TODO what's with IP addresses? */
+
+	return TCL_OK;
+#endif
 }
 
 static int
@@ -752,6 +826,7 @@ static int
 DNSMsgParseQuestion (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
+	const int resflags,
 	Tcl_Obj *resObj
 	)
 {
@@ -771,18 +846,7 @@ DNSMsgParseQuestion (
 	qclass = dns_msg_int16(mh);
 
 	if (resObj != NULL) {
-		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewStringObj("name", -1));
-		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewStringObj(name, -1));
-		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewStringObj("qtype", -1));
-		Tcl_ListObjAppendElement(interp, resObj,
-				DNSQTypeIndexToMnemonic(qtype));
-		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewStringObj("qclass", -1));
-		Tcl_ListObjAppendElement(interp, resObj,
-				DNSQClassIndexToMnemonic(qclass));
+		DNSFormatQuestion(interp, resflags, resObj, name, qtype, qclass);
 	}
 
 	return TCL_OK;
@@ -820,40 +884,15 @@ DNSMsgParseRR (
 static void
 DNSFormatRR (
 	Tcl_Interp *interp,
-	dns_msg_rr *rr,
-	Tcl_Obj *resObj
+	const int resflags,
+	Tcl_Obj *resObj,
+	const dns_msg_rr *rr
 	)
 {
 	if (resObj == NULL) return;
 
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewStringObj("name", -1));
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewStringObj(rr->name, -1));
-
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewStringObj("type", -1));
-	Tcl_ListObjAppendElement(interp, resObj,
-			DNSQTypeIndexToMnemonic(rr->type));
-
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewStringObj("class", -1));
-	Tcl_ListObjAppendElement(interp, resObj,
-			DNSQClassIndexToMnemonic(rr->class));
-
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewStringObj("ttl", -1));
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewIntObj(rr->ttl));
-
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewStringObj("rdlength", -1));
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewIntObj(rr->rdlength));
-
-	Tcl_ListObjAppendElement(interp, resObj,
-			Tcl_NewStringObj("rdata", -1));
-	/* Corresponding value will be provided by a call to DNSMsgParseRRData */
+	DNSFormatRRHeader(interp, resflags, resObj,
+			rr->name, rr->type, rr->class, rr->ttl, rr->rdlength);
 }
 
 int
@@ -897,7 +936,7 @@ DNSParseMessage (
 		} else {
 			questObj = NULL;
 		}
-		if (DNSMsgParseQuestion(interp, &handle, questObj) != TCL_OK) {
+		if (DNSMsgParseQuestion(interp, &handle, resflags, questObj) != TCL_OK) {
 			Tcl_DecrRefCount(resObj);
 			return TCL_ERROR;
 		}
@@ -926,7 +965,7 @@ DNSParseMessage (
 			rrObj = Tcl_NewListObj(0, NULL);
 			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
 			if (resflags & RES_DETAIL) {
-				DNSFormatRR(interp, &rr, rrObj);
+				DNSFormatRR(interp, resflags, rrObj, &rr);
 			}
 			if (DNSMsgParseRRData(interp, &handle, rr.type,
 						rr.rdlength, &dataObj) != TCL_OK) {
@@ -962,7 +1001,7 @@ DNSParseMessage (
 			rrObj = Tcl_NewListObj(0, NULL);
 			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
 			if (resflags & RES_DETAIL) {
-				DNSFormatRR(interp, &rr, rrObj);
+				DNSFormatRR(interp, resflags, rrObj, &rr);
 			}
 			if (DNSMsgParseRRData(interp, &handle, rr.type,
 						rr.rdlength, &dataObj) != TCL_OK) {
@@ -998,7 +1037,7 @@ DNSParseMessage (
 			rrObj = Tcl_NewListObj(0, NULL);
 			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
 			if (resflags & RES_DETAIL) {
-				DNSFormatRR(interp, &rr, rrObj);
+				DNSFormatRR(interp, resflags, rrObj, &rr);
 			}
 			if (DNSMsgParseRRData(interp, &handle, rr.type,
 						rr.rdlength, &dataObj) != TCL_OK) {

@@ -6560,7 +6560,7 @@ done
 #-----------------------------------------------------------------------
 
 
-    vars="tclsysdns.c dnsparams.c"
+    vars="tclsysdns.c dnsparams.c resfmt.c"
     for i in $vars; do
 	case $i in
 	    \$*)
