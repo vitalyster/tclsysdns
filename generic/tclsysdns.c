@@ -17,12 +17,18 @@ Sysdns_Resolve (
 	Tcl_Obj *const objv[]
 	)
 {
-	const char *optnames[] = { "-class", "-type",
+	const char *optnames[] = {
+		"-class", "-type",
 		"-question", "-answer", "-authority", "-additional", "-all",
-		"-detailed", "-details", NULL };
-	typedef enum { OPT_CLASS, OPT_TYPE,
+		"-detailed", "-headers",
+		"-names",
+		NULL };
+	typedef enum {
+		OPT_CLASS, OPT_TYPE,
 		OPT_QUESTION, OPT_ANSWER, OPT_AUTH, OPT_ADD, OPT_ALL,
-		OPT_DETAIL, OPT_DETAIL2 } opts_t;
+		OPT_DETAIL, OPT_HEADERS,
+		OPT_NAMES,
+	} opts_t;
 	int opt, i, sections;
 	unsigned short qclass, qtype;
 	unsigned int resflags;
@@ -97,8 +103,12 @@ Sysdns_Resolve (
 				++i;
 				break;
 			case OPT_DETAIL:
-			case OPT_DETAIL2:
+			case OPT_HEADERS:
 				resflags |= RES_DETAIL;
+				++i;
+				break;
+			case OPT_NAMES:
+				resflags |= RES_NAMES;
 				++i;
 				break;
 		}

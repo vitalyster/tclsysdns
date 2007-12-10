@@ -27,3 +27,38 @@ DNSFormatRRHeader (
 	const unsigned long ttl,
 	const int rdlength);
 
+void
+DNSFormatRRDataPTR (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char name[]);
+
+void
+DNSFormatRRDataA (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char name[]);
+
+void
+DNSFormatRRDataMX (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short prio,
+	const char name[]);
+
+void
+DNSFormatRRDataSOA (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char mname[],
+	const char rname[],
+	const unsigned long serial,
+	const unsigned long refresh,
+	const unsigned long retry,
+	const unsigned long expire,
+	const unsigned long minimum);
+
