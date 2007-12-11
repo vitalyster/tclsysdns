@@ -2,6 +2,11 @@ $Id$
 
 HIGH:
 
+* Formatting of IPv4 and IPv6 addresss should be moved to resfmt
+  module; the addresses should be passed to formatters as
+  unsigned long and 8 unsigned shorts, respectively, or
+  via some (standard?) structs.
+
 * In resolver part, should probably do an early checks to skip
   parsing of RRs if none of them is needed for result set.
 

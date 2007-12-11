@@ -289,12 +289,11 @@ DNSMsgParseRRDataPTR (
 }
 
 static int
-DNSMsgParseRRDataA (
+DNSMsgParseAddress (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
 	const int rdlength,
-	const int resflags,
-	Tcl_Obj **resObjPtr
+	const char **addrPtr
 	)
 {
 	struct in_addr in;
@@ -307,7 +306,26 @@ DNSMsgParseRRDataA (
 	in.s_addr = ((unsigned long *) mh->cur)[0];
 	dns_msg_adv(mh, DNSMSG_INT32_SIZE);
 
-	DNSFormatRRDataA(interp, resflags, resObjPtr, inet_ntoa(in));
+	*addrPtr = inet_ntoa(in);
+	return TCL_OK;
+}
+
+static int
+DNSMsgParseRRDataA (
+	Tcl_Interp *interp,
+	dns_msg_handle *mh,
+	const int rdlength,
+	const int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	const char *addrPtr;
+
+	if (DNSMsgParseAddress(interp, mh, rdlength, &addrPtr) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
+	DNSFormatRRDataA(interp, resflags, resObjPtr, addrPtr);
 	return TCL_OK;
 }
 
@@ -373,24 +391,6 @@ DNSMsgParseRRDataSOA (
 	expire  = dns_msg_int32(mh);
 	minimum = dns_msg_int32(mh);
 
-	/*
-	*resObjPtr = Tcl_NewListObj(0, NULL);
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewStringObj(name, -1));
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewStringObj(name, -1));
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewWideIntObj(dns_msg_int32(mh)));
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewLongObj(dns_msg_int32(mh)));
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewLongObj(dns_msg_int32(mh)));
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewLongObj(dns_msg_int32(mh)));
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewLongObj(dns_msg_int32(mh)));
-	*/
-
 	DNSFormatRRDataSOA(interp, resflags, resObjPtr,
 			mname, rname, serial, refresh, retry, expire, minimum);
 	return TCL_OK;
@@ -400,30 +400,26 @@ static int
 DNSMsgParseRRDataMINFO (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
-	int rdlength,
+	const int rdlength,
+	const int resflags,
 	Tcl_Obj **resObjPtr
 	)
 {
-	char name[256];
-
-	*resObjPtr = Tcl_NewListObj(0, NULL);
+	char rmailbx[256];
+	char emailbx[256];
 
 	/* RMAILBX */
-	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
-		Tcl_DecrRefCount(*resObjPtr);
+	if (DNSMsgExpandName(interp, mh, rmailbx, sizeof(rmailbx)) != TCL_OK) {
 		return TCL_ERROR;
 	}
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewStringObj(name, -1));
 
 	/* EMAILBX */
-	if (DNSMsgExpandName(interp, mh, name, sizeof(name)) != TCL_OK) {
-		Tcl_DecrRefCount(*resObjPtr);
+	if (DNSMsgExpandName(interp, mh, emailbx, sizeof(emailbx)) != TCL_OK) {
 		return TCL_ERROR;
 	}
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewStringObj(name, -1));
 
+	DNSFormatRRDataMINFO(interp, resflags, resObjPtr,
+			rmailbx, emailbx);
 	return TCL_OK;
 }
 
@@ -431,13 +427,15 @@ static int
 DNSMsgParseRRDataTXT (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
-	int rdlength,
+	const int rdlength,
+	const int resflags,
 	Tcl_Obj **resObjPtr
 	)
 {
+	Tcl_Obj *itemsObj;
 	int read, parts;
 
-	*resObjPtr = Tcl_NewListObj(0, NULL);
+	itemsObj = Tcl_NewListObj(0, NULL);
 
 	read  = 0;
 	parts = 0;
@@ -446,7 +444,7 @@ DNSMsgParseRRDataTXT (
 
 		if (rdlength - read < 1) {
 			if (parts > 0) break;
-			Tcl_DecrRefCount(*resObjPtr);
+			Tcl_DecrRefCount(itemsObj);
 			DNSMsgSetPosixError(interp, EBADMSG);
 			return TCL_ERROR;
 		}
@@ -455,12 +453,12 @@ DNSMsgParseRRDataTXT (
 		dns_msg_adv(mh, 1);
 		++read;
 		if (len > rdlength - read) {
-			Tcl_DecrRefCount(*resObjPtr);
+			Tcl_DecrRefCount(itemsObj);
 			DNSMsgSetPosixError(interp, EBADMSG);
 			return TCL_ERROR;
 		}
 
-		Tcl_ListObjAppendElement(interp, *resObjPtr,
+		Tcl_ListObjAppendElement(interp, itemsObj,
 				Tcl_NewStringObj((const char *) mh->cur, len));
 		dns_msg_adv(mh, len);
 		read += len;
@@ -468,6 +466,7 @@ DNSMsgParseRRDataTXT (
 		++parts;
 	}
 
+	DNSFormatRRDataTXT2(interp, resflags, resObjPtr, itemsObj);
 	return TCL_OK;
 }
 
@@ -475,13 +474,17 @@ static int
 DNSMsgParseRRDataNULL (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
-	int rdlength,
+	const int rdlength,
+	const int resflags,
 	Tcl_Obj **resObjPtr
 	)
 {
-	*resObjPtr = Tcl_NewByteArrayObj(mh->cur, rdlength);
+	const char *startPtr;
+
+	startPtr = (const char *)mh->cur;
 	dns_msg_adv(mh, rdlength);
 
+	DNSFormatRRDataNULL(interp, resflags, resObjPtr, rdlength, startPtr);
 	return TCL_OK;
 }
 
@@ -494,7 +497,8 @@ DNSMsgParseRRDataWKS (
 	Tcl_Obj **resObjPtr
 	)
 {
-	Tcl_Obj *addrObj;
+	const char *addrPtr, *bitmaskPtr;
+	int proto, len;
 
 	if (dns_msg_rem(mh) < DNSMSG_INT32_SIZE + 1) {
 		DNSMsgSetPosixError(interp, EBADMSG);
@@ -502,23 +506,21 @@ DNSMsgParseRRDataWKS (
 	}
 
 	/* ADDRESS */
-	if (DNSMsgParseRRDataA(interp, mh, rdlength, resflags, &addrObj) != TCL_OK) {
+	if (DNSMsgParseAddress(interp, mh, rdlength, &addrPtr) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
-	*resObjPtr = Tcl_NewListObj(0, NULL);
-
-	Tcl_ListObjAppendElement(interp, *resObjPtr, addrObj);
-
 	/* PROTOCOL */
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewIntObj(mh->cur[0]));
+	proto = mh->cur[0];
 	dns_msg_adv(mh, 1);
 
 	/* BIT MAP */
-	Tcl_ListObjAppendElement(interp, *resObjPtr,
-			Tcl_NewByteArrayObj(mh->cur, rdlength - DNSMSG_INT32_SIZE - 1));
+	bitmaskPtr = (const char *) mh->cur;
+	len = rdlength - DNSMSG_INT32_SIZE - 1;
+	dns_msg_adv(mh, len);
 
+	DNSFormatRRDataWKS(interp, resflags, resObjPtr,
+			addrPtr, proto, len, bitmaskPtr);
 	return TCL_OK;
 }
 
@@ -791,7 +793,7 @@ DNSMsgParseRRData (
 			return DNSMsgParseRRDataPTR(interp, mh, rdlength, resflags, resObjPtr);
 		case 14: /* MINFO */
 		case 17: /* RP */
-			return DNSMsgParseRRDataMINFO(interp, mh, rdlength, resObjPtr);
+			return DNSMsgParseRRDataMINFO(interp, mh, rdlength, resflags, resObjPtr);
 		case 15: /* MX */
 		case 18: /* AFSDB */
 		case 21: /* RT */
@@ -800,9 +802,9 @@ DNSMsgParseRRData (
 		case 16: /* TXT */
 		case 19: /* X25 */
 		case 20: /* ISDN */
-			return DNSMsgParseRRDataTXT(interp, mh, rdlength, resObjPtr);
+			return DNSMsgParseRRDataTXT(interp, mh, rdlength, resflags, resObjPtr);
 		case 10: /* NULL */
-			return DNSMsgParseRRDataNULL(interp, mh, rdlength, resObjPtr);
+			return DNSMsgParseRRDataNULL(interp, mh, rdlength, resflags, resObjPtr);
 		case 11: /* WKS */
 			return DNSMsgParseRRDataWKS(interp, mh, rdlength, resflags, resObjPtr);
 		case 28: /* AAAA */

@@ -62,3 +62,44 @@ DNSFormatRRDataSOA (
 	const unsigned long expire,
 	const unsigned long minimum);
 
+void
+DNSFormatRRDataMINFO (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char rmailbx[],
+	const char emailbx[]);
+
+void
+DNSFormatRRDataTXT (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const int count,
+	const char *items[]);
+
+void
+DNSFormatRRDataTXT2 (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	Tcl_Obj *itemsObj);
+
+void
+DNSFormatRRDataNULL (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const int count,
+	const char *data);
+
+void
+DNSFormatRRDataWKS (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char addr[],
+	const int proto,
+	const int bmlen,
+	const char bitmask[]);
+

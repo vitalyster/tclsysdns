@@ -210,3 +210,90 @@ DNSFormatRRDataSOA (
 			NULL);
 }
 
+void
+DNSFormatRRDataMINFO (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char rmailbx[],
+	const char emailbx[]
+	)
+{
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"rmailbx",   Tcl_NewStringObj(rmailbx, -1),
+			"emailbx",   Tcl_NewStringObj(emailbx, -1),
+			NULL);
+}
+
+void
+DNSFormatRRDataTXT (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const int count,
+	const char *items[]
+	)
+{
+	Tcl_Obj *dataObj;
+	int i;
+
+	*resObjPtr = Tcl_NewListObj(0, NULL);
+
+	if (resflags & RES_NAMES) {
+		Tcl_ListObjAppendElement(interp, *resObjPtr,
+				Tcl_NewStringObj("data", -1));
+		dataObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, *resObjPtr, dataObj);
+	} else {
+		dataObj = *resObjPtr;
+	}
+
+	for (i = 0; i < count; ++i) {
+		Tcl_ListObjAppendElement(interp, dataObj,
+				Tcl_NewStringObj(items[i], -1));
+	}
+}
+
+void
+DNSFormatRRDataTXT2 (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	Tcl_Obj *itemsObj
+	)
+{
+	DNSFormatRRData(interp, resflags, resObjPtr,
+			"data", itemsObj);
+}
+
+void
+DNSFormatRRDataNULL (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const int count,
+	const char *data
+	)
+{
+	DNSFormatRRData(interp, resflags, resObjPtr,
+			"data", Tcl_NewByteArrayObj(data, count));
+}
+
+void
+DNSFormatRRDataWKS (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char addr[],
+	const int proto,
+	const int bmlen,
+	const char bitmask[]
+	)
+{
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"address",   Tcl_NewStringObj(addr, -1),
+			"protocol",  Tcl_NewIntObj(proto),
+			"bitmask",   Tcl_NewByteArrayObj(bitmask, bmlen),
+			NULL);
+}
+
