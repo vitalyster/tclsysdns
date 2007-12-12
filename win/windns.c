@@ -7,6 +7,7 @@
 
 #include <tcl.h>
 #include "tclsysdns.h"
+#include "resfmt.h"
 
 #include <windows.h>
 #include <WinDNS.h>
@@ -147,27 +148,108 @@ NewStringObjFromIP4Addr (
 	return Tcl_NewStringObj(inet_ntoa(ia), -1);
 }
 
-int
-Impl_Query (
+static void
+DNSParseRRData (
 	Tcl_Interp *interp,
-	Tcl_Obj *queryObj,
-	Tcl_Obj *typeObj,
-	Tcl_Obj *classObj
+	const DNS_RECORD *rr,
+	const int resflags,
+	Tcl_Obj **resObjPtr
 	)
 {
-	WORD type;
-	DNS_STATUS res;
-	PDNS_RECORD recPtr, chunkPtr;
-	Tcl_Obj *listObj;
-
-	if (DNSRRTypeMnemonicToIndex(interp, typeObj, &type) != TCL_OK) {
-		return TCL_ERROR;
+	switch (rr->wType) {
+		case DNS_TYPE_A:
+			DNSFormatRRDataA(interp, resflags, resObjPtr,
+					//rr->Data.A.IpAddress);
+					"127.0.0.2");
+			break;
+		default:
+			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			break;
 	}
+}
+
+static void
+DNSParseQuestion (
+	Tcl_Interp *interp,
+	const DNS_RECORD *rr,
+	const int resflags,
+	Tcl_Obj *resObj
+	)
+{
+	Tcl_Obj *sectObj, *dataObj;
+	/*
+	if (resflags & RES_NAMES) {
+		Tcl_ListObjAppendElement(interp, questObj,
+				Tcl_NewStringObj("question", -1));
+	}
+	*/
+	if (resflags & RES_MULTIPLE) {
+		sectObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, resObj, sectObj);
+	} else {
+		sectObj = resObj;
+	}
+	dataObj = Tcl_NewListObj(0, NULL);
+	Tcl_ListObjAppendElement(interp, sectObj, dataObj);
+	DNSFormatQuestion(interp, resflags, dataObj,
+			rr->pName,
+			rr->wType,
+			DNS_CLASS_INTERNET);
+}
+
+static void
+DNSParseRRSection (
+	Tcl_Interp *interp,
+	const DNS_RECORD *rr,
+	const int resflags,
+	Tcl_Obj *resObj
+	)
+{
+	Tcl_Obj *sectObj, *rrObj, *dataObj;
+	/*
+	if (resflags & RES_NAMES) {
+		Tcl_ListObjAppendElement(interp, resObj,
+				Tcl_NewStringObj("answer", -1));
+	}
+	*/
+	if (resflags & RES_MULTIPLE) {
+		sectObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, resObj, sectObj);
+	} else {
+		sectObj = resObj;
+	}
+	rrObj = Tcl_NewListObj(0, NULL);
+	Tcl_ListObjAppendElement(interp, sectObj, rrObj);
+	if (resflags & RES_DETAIL) {
+		DNSFormatRRHeader(interp, resflags, rrObj,
+				rr->pName,
+				rr->wType,
+				DNS_CLASS_INTERNET,
+				rr->dwTtl,
+				rr->wDataLength);
+	}
+	DNSParseRRData(interp, rr, resflags, &dataObj);
+	Tcl_ListObjAppendElement(interp, rrObj, dataObj);
+}
+
+int
+Impl_Resolve (
+	Tcl_Interp *interp,
+	Tcl_Obj *queryObj,
+	const unsigned short qclass,
+	const unsigned short qtype,
+	const unsigned int resflags
+	)
+{
+	DNS_STATUS res;
+	PDNS_RECORD recPtr, sectPtr;
+	Tcl_Obj *questObj, *answObj, *authObj, *addObj;
+	Tcl_Obj *resObj;
 
 	res = DnsQuery_UTF8(
 		Tcl_GetStringFromObj(queryObj, NULL),
-		type,
-		DNS_QUERY_STANDARD,
+		qtype,
+		qclass,
 		NULL,
 		&recPtr,
 		NULL
@@ -178,31 +260,77 @@ Impl_Query (
 		return TCL_ERROR;
 	}
 
-	listObj = Tcl_NewListObj(0, NULL);
-	chunkPtr = recPtr;
-	while (chunkPtr != NULL) {
-		if (chunkPtr->Flags.S.Section == DnsSectionAnswer) {
-			switch (type) {
-				case DNS_TYPE_A:
-					Tcl_ListObjAppendElement(interp, listObj,
-							NewStringObjFromIP4Addr(chunkPtr->Data.A.IpAddress));
-					break;
-				case DNS_TYPE_SRV:
-					Tcl_ListObjAppendElement(interp, listObj,
-							Tcl_NewStringObj(chunkPtr->Data.SRV.pNameTarget, -1));
-					break;
-				default:
-					Tcl_SetResult(interp, "Not implemented", TCL_STATIC);
-					DnsFree(recPtr, DnsFreeRecordList);
-					return TCL_ERROR;
-			}
+	questObj = answObj = authObj = addObj = NULL;
+	sectPtr = recPtr;
+	while (sectPtr != NULL) {
+		switch (sectPtr->Flags.S.Section) {
+			case DNSREC_QUESTION:
+				if (resflags & RES_QUESTION == 0) break;
+				if (questObj == NULL) {
+					questObj = Tcl_NewListObj(0, NULL);
+				}
+				DNSParseQuestion(interp, sectPtr, resflags, questObj);
+				break;
+			case DNSREC_ANSWER:
+				if (resflags & RES_ANSWER == 0) break;
+				if (answObj == NULL) {
+					answObj = Tcl_NewListObj(0, NULL);
+				}
+				DNSParseRRSection(interp, sectPtr, resflags, answObj);
+				break;
+			case DNSREC_AUTHORITY:
+				if (resflags & RES_AUTH == 0) break;
+				if (authObj == NULL) {
+					authObj = Tcl_NewListObj(0, NULL);
+				}
+				DNSParseRRSection(interp, sectPtr, resflags, authObj);
+				break;
+			case DNSREC_ADDITIONAL:
+				if (resflags & RES_ADD == 0) break;
+				if (addObj == NULL) {
+					addObj = Tcl_NewListObj(0, NULL);
+				}
+				DNSParseRRSection(interp, sectPtr, resflags, addObj);
+				break;
 		}
-		chunkPtr = chunkPtr->pNext;
+		sectPtr = sectPtr->pNext;
 	}
 
 	DnsFree(recPtr, DnsFreeRecordList);
 
-	Tcl_SetObjResult(interp, listObj);
+	/* Assembly of the result set */
+	resObj = Tcl_NewListObj(0, NULL);
+
+	if ((resflags & RES_QUESTION) && questObj != NULL) {
+		if (resflags & RES_NAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("question", -1));
+		}
+		Tcl_ListObjAppendElement(interp, resObj, questObj);
+	}
+	if ((resflags & RES_ANSWER) && answObj != NULL) {
+		if (resflags & RES_NAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("answer", -1));
+		}
+		Tcl_ListObjAppendElement(interp, resObj, answObj);
+	}
+	if ((resflags & RES_AUTH) && authObj != NULL) {
+		if (resflags & RES_NAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("authority", -1));
+		}
+		Tcl_ListObjAppendElement(interp, resObj, authObj);
+	}
+	if ((resflags & RES_ADD) && addObj != NULL) {
+		if (resflags & RES_NAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("additional", -1));
+		}
+		Tcl_ListObjAppendElement(interp, resObj, addObj);
+	}
+
+	Tcl_SetObjResult(interp, resObj);
 	return TCL_OK;
 }
 

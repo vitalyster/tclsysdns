@@ -5,7 +5,11 @@ HIGH:
 * Formatting of IPv4 and IPv6 addresss should be moved to resfmt
   module; the addresses should be passed to formatters as
   unsigned long and 8 unsigned shorts, respectively, or
-  via some (standard?) structs.
+  via some (standard?) structs (see DNS_IP6_ADDRESS in WinDNS.h
+  for example).
+
+* (Win32) Extra lists in sections when -names or (or -headers?)
+  are enabled.
 
 * In resolver part, should probably do an early checks to skip
   parsing of RRs if none of them is needed for result set.
@@ -15,19 +19,16 @@ HIGH:
   (seems like VC defines several types that are unusable
   in queries and thus should be avoided).
 
-* Factor out functions building intermediate result sets
-  and use them in the Win32 part.
-
 * Investigate why one additional bogus (?) IP is returned
   for the "A" RR for the "www.gnu.org" query on Win32.
 
-* Think of making DNSMsgExpandName() return a pointer to its
-  internal static buffer since a domain name can't exceed 255
-  characters and this name is anyway mostly needed just to
-  be copied to an internal rep of Tcl_StringObj.
-  Allocation of memory in the caller's stack frame is tedious.
-
 NORMAL:
+
+* (Win32) looks like question isn't at all returned w/o
+  special options.
+
+* (Win32) DNS_RECORD lacks "class" field. We default to "IN"
+  as of now.
 
 * Bring MinGW support in sync.
 
