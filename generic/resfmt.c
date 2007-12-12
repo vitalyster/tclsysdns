@@ -7,6 +7,11 @@
 
 #include <tcl.h>
 #include <stdarg.h>
+#if defined _WIN32 || defined __WIN32__
+#include <winsock.h>
+#else
+#include <arpa/inet.h>
+#endif
 #include "tclsysdns.h"
 #include "dnsparams.h"
 #include "resfmt.h"
@@ -163,11 +168,14 @@ DNSFormatRRDataA (
 	Tcl_Interp *interp,
 	const int resflags,
 	Tcl_Obj **resObjPtr,
-	const char name[]
+	const unsigned long addr
 	)
 {
+	struct in_addr in;
+
+	in.s_addr = addr;
 	DNSFormatRRData(interp, resflags, resObjPtr,
-			"address", Tcl_NewStringObj(name, -1));
+			"address", Tcl_NewStringObj(inet_ntoa(in), -1));
 }
 
 void

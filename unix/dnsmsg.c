@@ -293,20 +293,17 @@ DNSMsgParseAddress (
 	Tcl_Interp *interp,
 	dns_msg_handle *mh,
 	const int rdlength,
-	const char **addrPtr
+	const unsigned long **addrPtr
 	)
 {
-	struct in_addr in;
-
 	if (dns_msg_rem(mh) < DNSMSG_INT32_SIZE) {
 		DNSMsgSetPosixError(interp, EBADMSG);
 		return TCL_ERROR;
 	}
 
-	in.s_addr = ((unsigned long *) mh->cur)[0];
+	*addrOtr = ((unsigned long *) mh->cur)[0];
 	dns_msg_adv(mh, DNSMSG_INT32_SIZE);
 
-	*addrPtr = inet_ntoa(in);
 	return TCL_OK;
 }
 
@@ -319,13 +316,13 @@ DNSMsgParseRRDataA (
 	Tcl_Obj **resObjPtr
 	)
 {
-	const char *addrPtr;
+	const unsigned long addrPtr;
 
 	if (DNSMsgParseAddress(interp, mh, rdlength, &addrPtr) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
-	DNSFormatRRDataA(interp, resflags, resObjPtr, addrPtr);
+	DNSFormatRRDataA(interp, resflags, resObjPtr, &addrPtr);
 	return TCL_OK;
 }
 

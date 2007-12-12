@@ -39,7 +39,7 @@ DNSFormatRRDataA (
 	Tcl_Interp *interp,
 	const int resflags,
 	Tcl_Obj **resObjPtr,
-	const char name[]);
+	const unsigned long addr);
 
 void
 DNSFormatRRDataMX (

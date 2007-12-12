@@ -137,17 +137,6 @@ Impl_GetNameservers (
 	return TCL_OK;
 }
 
-static Tcl_Obj*
-NewStringObjFromIP4Addr (
-	IP4_ADDRESS addr
-	)
-{
-	struct in_addr ia;
-
-	ia.s_addr = addr;
-	return Tcl_NewStringObj(inet_ntoa(ia), -1);
-}
-
 static void
 DNSParseRRData (
 	Tcl_Interp *interp,
@@ -159,8 +148,7 @@ DNSParseRRData (
 	switch (rr->wType) {
 		case DNS_TYPE_A:
 			DNSFormatRRDataA(interp, resflags, resObjPtr,
-					//rr->Data.A.IpAddress);
-					"127.0.0.2");
+					rr->Data.A.IpAddress);
 			break;
 		default:
 			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
@@ -177,12 +165,7 @@ DNSParseQuestion (
 	)
 {
 	Tcl_Obj *sectObj, *dataObj;
-	/*
-	if (resflags & RES_NAMES) {
-		Tcl_ListObjAppendElement(interp, questObj,
-				Tcl_NewStringObj("question", -1));
-	}
-	*/
+
 	if (resflags & RES_MULTIPLE) {
 		sectObj = Tcl_NewListObj(0, NULL);
 		Tcl_ListObjAppendElement(interp, resObj, sectObj);
@@ -206,12 +189,7 @@ DNSParseRRSection (
 	)
 {
 	Tcl_Obj *sectObj, *rrObj, *dataObj;
-	/*
-	if (resflags & RES_NAMES) {
-		Tcl_ListObjAppendElement(interp, resObj,
-				Tcl_NewStringObj("answer", -1));
-	}
-	*/
+
 	if (resflags & RES_MULTIPLE) {
 		sectObj = Tcl_NewListObj(0, NULL);
 		Tcl_ListObjAppendElement(interp, resObj, sectObj);
