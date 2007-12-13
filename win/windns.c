@@ -6,13 +6,12 @@
  */
 
 #include <tcl.h>
-#include "tclsysdns.h"
-#include "resfmt.h"
-
 #include <windows.h>
 #include <WinDNS.h>
 #include <winsock.h>
 #include <Iphlpapi.h>
+#include "tclsysdns.h"
+#include "resfmt.h"
 
 /* Code taken from win/tkWinTest.c of Tk
  *----------------------------------------------------------------------
@@ -137,6 +136,21 @@ Impl_GetNameservers (
 	return TCL_OK;
 }
 
+static IP6_ADDRESS
+NormalizeWinIP6Addr(
+	const IP6_ADDRESS addr
+	)
+{
+	int i;
+	IP6_ADDRESS out;
+
+	for (i = 0; i < 8; ++i) {
+		out.IP6Word[i] = htons(addr.IP6Word[i]);
+	}
+
+	return out;
+}
+
 static void
 DNSParseRRData (
 	Tcl_Interp *interp,
@@ -149,6 +163,64 @@ DNSParseRRData (
 		case DNS_TYPE_A:
 			DNSFormatRRDataA(interp, resflags, resObjPtr,
 					rr->Data.A.IpAddress);
+			break;
+		case DNS_TYPE_SOA:
+			DNSFormatRRDataSOA(interp, resflags, resObjPtr,
+					rr->Data.SOA.pNamePrimaryServer,
+					rr->Data.SOA.pNameAdministrator,
+					rr->Data.SOA.dwSerialNo,
+					rr->Data.SOA.dwRefresh,
+					rr->Data.SOA.dwRetry,
+					rr->Data.SOA.dwExpire,
+					rr->Data.SOA.dwDefaultTtl);
+			break;
+		case DNS_TYPE_NS:
+		case DNS_TYPE_MD:
+		case DNS_TYPE_MF:
+		case DNS_TYPE_CNAME:
+		case DNS_TYPE_MB:
+		case DNS_TYPE_MG:
+		case DNS_TYPE_MR:
+		case DNS_TYPE_PTR:
+			DNSFormatRRDataPTR(interp, resflags, resObjPtr,
+					rr->Data.PTR.pNameHost);
+			break;
+		case DNS_TYPE_MINFO:
+		case DNS_TYPE_RP:
+			DNSFormatRRDataMINFO(interp, resflags, resObjPtr,
+					rr->Data.MINFO.pNameMailbox,
+					rr->Data.MINFO.pNameErrorsMailbox);
+			break;
+		case DNS_TYPE_MX:
+		case DNS_TYPE_AFSDB:
+		case DNS_TYPE_RT:
+			DNSFormatRRDataMX(interp, resflags, resObjPtr,
+					rr->Data.MX.wPreference,
+					rr->Data.MX.pNameExchange);
+			break;
+		case DNS_TYPE_HINFO:
+		case DNS_TYPE_TEXT:
+		case DNS_TYPE_X25:
+		case DNS_TYPE_ISDN:
+			DNSFormatRRDataTXT(interp, resflags, resObjPtr,
+					rr->Data.TXT.dwStringCount,
+					rr->Data.TXT.pStringArray);
+			break;
+		case DNS_TYPE_NULL:
+			DNSFormatRRDataNULL(interp, resflags, resObjPtr,
+					rr->Data.Null.dwByteCount,
+					rr->Data.Null.Data);
+			break;
+		case DNS_TYPE_WKS:
+			DNSFormatRRDataWKS(interp, resflags, resObjPtr,
+					rr->Data.WKS.IpAddress,
+					rr->Data.WKS.chProtocol,
+					DNS_WKS_RECORD_LENGTH(rr->wDataLength),
+					rr->Data.WKS.BitMask);
+			break;
+		case DNS_TYPE_AAAA:
+			DNSFormatRRDataAAAA(interp, resflags, resObjPtr,
+					NormalizeWinIP6Addr(rr->Data.AAAA.Ip6Address).IP6Word);
 			break;
 		default:
 			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);

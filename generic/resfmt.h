@@ -76,7 +76,7 @@ DNSFormatRRDataTXT (
 	const int resflags,
 	Tcl_Obj **resObjPtr,
 	const int count,
-	const char *items[]);
+	const char *const items[]);
 
 void
 DNSFormatRRDataTXT2 (
@@ -91,15 +91,22 @@ DNSFormatRRDataNULL (
 	const int resflags,
 	Tcl_Obj **resObjPtr,
 	const int count,
-	const char *data);
+	const char data[]);
 
 void
 DNSFormatRRDataWKS (
 	Tcl_Interp *interp,
 	const int resflags,
 	Tcl_Obj **resObjPtr,
-	const char addr[],
+	const unsigned long addr,
 	const int proto,
 	const int bmlen,
 	const char bitmask[]);
+
+void
+DNSFormatRRDataAAAA (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short parts[8]);
 

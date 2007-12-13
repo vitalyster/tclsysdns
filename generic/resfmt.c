@@ -239,7 +239,7 @@ DNSFormatRRDataTXT (
 	const int resflags,
 	Tcl_Obj **resObjPtr,
 	const int count,
-	const char *items[]
+	const char *const items[]
 	)
 {
 	Tcl_Obj *dataObj;
@@ -280,7 +280,7 @@ DNSFormatRRDataNULL (
 	const int resflags,
 	Tcl_Obj **resObjPtr,
 	const int count,
-	const char *data
+	const char data[]
 	)
 {
 	DNSFormatRRData(interp, resflags, resObjPtr,
@@ -292,16 +292,37 @@ DNSFormatRRDataWKS (
 	Tcl_Interp *interp,
 	const int resflags,
 	Tcl_Obj **resObjPtr,
-	const char addr[],
+	const unsigned long addr,
 	const int proto,
 	const int bmlen,
 	const char bitmask[]
 	)
 {
+	struct in_addr in;
+
+	in.s_addr = addr;
 	DNSFormatRRDataList(interp, resflags, resObjPtr,
-			"address",   Tcl_NewStringObj(addr, -1),
+			"address",   Tcl_NewStringObj(inet_ntoa(in), -1),
 			"protocol",  Tcl_NewIntObj(proto),
 			"bitmask",   Tcl_NewByteArrayObj(bitmask, bmlen),
 			NULL);
+}
+
+void
+DNSFormatRRDataAAAA (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short parts[8]
+	)
+{
+	char buf[sizeof("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210")];
+
+	sprintf(buf, "%x:%x:%x:%x:%x:%x:%x:%x",
+			parts[0], parts[1], parts[2], parts[3],
+			parts[4], parts[5], parts[6], parts[7]);
+
+	DNSFormatRRData(interp, resflags, resObjPtr,
+			"address", Tcl_NewStringObj(buf, -1));
 }
 

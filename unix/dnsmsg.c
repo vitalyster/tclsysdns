@@ -529,7 +529,6 @@ DNSMsgParseRRDataAAAA (
 	Tcl_Obj **resObjPtr
 	)
 {
-	char buf[sizeof("FEDC:BA98:7654:3210:FEDC:BA98:7654:3210")];
 	unsigned short parts[8];
 	int i;
 
@@ -542,12 +541,7 @@ DNSMsgParseRRDataAAAA (
 		parts[i] = dns_msg_int16(mh);
 	}
 
-	sprintf(buf, "%x:%x:%x:%x:%x:%x:%x:%x",
-			parts[0], parts[1], parts[2], parts[3],
-			parts[4], parts[5], parts[6], parts[7]);
-
-	*resObjPtr = Tcl_NewStringObj(buf, -1);
-
+	DNSFormatRRDataAAAA(interp, resflags, resObjPtr, parts);
 	return TCL_OK;
 }
 
