@@ -326,3 +326,143 @@ DNSFormatRRDataAAAA (
 			"address", Tcl_NewStringObj(buf, -1));
 }
 
+void
+DNSFormatRRDataATMA (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const int type,
+	const char addr[20]
+	)
+{
+	Tcl_Obj *typeObj, *addrObj;
+
+	switch (type) {
+		case 1: /* E164 */
+			typeObj = Tcl_NewStringObj("E164", -1);
+			addrObj = Tcl_NewStringObj(addr, -1);
+			break;
+		case 2: /* AESA */
+			typeObj = Tcl_NewStringObj("AESA", -1);
+			addrObj = Tcl_NewStringObj(addr, 20);
+			break;
+		default:
+			typeObj = Tcl_NewStringObj("UNSUPPORTED", -1);
+			addrObj = Tcl_NewObj();
+			break;
+	}
+
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"type",    typeObj,
+			"address", addrObj,
+			NULL);
+}
+
+void
+DNSFormatRRDataNXT (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char next[],
+	const int count,
+	const char bitmap[1]
+	)
+{
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"next",   Tcl_NewStringObj(next, -1),
+			"bitmap", Tcl_NewByteArrayObj(bitmap, count),
+			NULL);
+}
+
+void
+DNSFormatRRDataSRV (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short prio,
+	const unsigned short weight,
+	const unsigned short port,
+	const char target[]
+	)
+{
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"prio",   Tcl_NewIntObj(prio),
+			"weight", Tcl_NewIntObj(weight),
+			"port",   Tcl_NewIntObj(port),
+			"target", Tcl_NewStringObj(target, -1),
+			NULL);
+}
+
+void
+DNSFormatRRDataWINS (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned long mapping,
+	const unsigned long lkupTimeout,
+	const unsigned long cacheTimeout,
+	const int count,
+	const unsigned long addrs[1]
+	)
+{
+	Tcl_Obj *addrsObj;
+	int i, repl;
+
+	addrsObj = Tcl_NewListObj(0, NULL);
+	for (i = 0; i < count; ++i) {
+		struct in_addr in;
+
+		in.s_addr = addrs[i];
+		Tcl_ListObjAppendElement(interp, addrsObj,
+				Tcl_NewStringObj(inet_ntoa(in), -1));
+	}
+
+	switch (mapping) {
+		case 0x80000000L:
+			repl = 1;
+			break;
+		case 0x00010000L:
+		default:
+			repl = 0;
+			break;
+	}
+
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"replicate",     Tcl_NewBooleanObj(repl),
+			"lookuptimeout", Tcl_NewWideIntObj(lkupTimeout),
+			"cachetimeout",  Tcl_NewWideIntObj(cacheTimeout),
+			"winsservers",   addrsObj,
+			NULL);
+}
+
+void
+DNSFormatRRDataWINSR (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned long mapping,
+	const unsigned long lkupTimeout,
+	const unsigned long cacheTimeout,
+	const char name[]
+	)
+{
+	int repl;
+
+	switch (mapping) {
+		case 0x80000000L:
+			repl = 1;
+			break;
+		case 0x00010000L:
+		default:
+			repl = 0;
+			break;
+	}
+
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"replicate",     Tcl_NewBooleanObj(repl),
+			"lookuptimeout", Tcl_NewWideIntObj(lkupTimeout),
+			"cachetimeout",  Tcl_NewWideIntObj(cacheTimeout),
+			"name",          Tcl_NewStringObj(name, -1),
+			NULL);
+}
+

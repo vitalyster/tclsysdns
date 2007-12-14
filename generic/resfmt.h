@@ -110,3 +110,51 @@ DNSFormatRRDataAAAA (
 	Tcl_Obj **resObjPtr,
 	const unsigned short parts[8]);
 
+void
+DNSFormatRRDataATMA (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const int type,
+	const char addr[20]);
+
+void
+DNSFormatRRDataNXT (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const char next[],
+	const int count,
+	const char bitmap[1]);
+
+void
+DNSFormatRRDataSRV (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short prio,
+	const unsigned short weight,
+	const unsigned short port,
+	const char target[]);
+
+void
+DNSFormatRRDataWINS (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned long mapping,
+	const unsigned long lkupTimeout,
+	const unsigned long cacheTimeout,
+	const int count,
+	const unsigned long addrs[1]);
+
+void
+DNSFormatRRDataWINSR (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned long mapping,
+	const unsigned long lkupTimeout,
+	const unsigned long cacheTimeout,
+	const char name[]);
+

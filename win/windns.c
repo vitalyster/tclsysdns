@@ -137,7 +137,7 @@ Impl_GetNameservers (
 }
 
 static IP6_ADDRESS
-NormalizeWinIP6Addr(
+NormalizeWinIP6Addr (
 	const IP6_ADDRESS addr
 	)
 {
@@ -222,6 +222,54 @@ DNSParseRRData (
 			DNSFormatRRDataAAAA(interp, resflags, resObjPtr,
 					NormalizeWinIP6Addr(rr->Data.AAAA.Ip6Address).IP6Word);
 			break;
+		case DNS_TYPE_SIG:
+			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			break;
+		case DNS_TYPE_KEY:
+			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			break;
+		case DNS_TYPE_ATMA:
+			DNSFormatRRDataATMA(interp, resflags, resObjPtr,
+					rr->Data.ATMA.AddressType,
+					rr->Data.ATMA.Address);
+			break;
+		case DNS_TYPE_NXT:
+			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			/*
+			DNSFormatRRDataNXT(interp, resflags, resObjPtr,
+					rr->Data.NXT.pNameNext,
+					rr->Data.NXT.wNumTypes,
+					rr->Data.NXT.wTypes);
+			*/
+			break;
+		case DNS_TYPE_SRV:
+			DNSFormatRRDataSRV(interp, resflags, resObjPtr,
+					rr->Data.SRV.wPriority,
+					rr->Data.SRV.wWeight,
+					rr->Data.SRV.wPort,
+					rr->Data.SRV.pNameTarget);
+			break;
+		case DNS_TYPE_TKEY:
+			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			break;
+		case DNS_TYPE_TSIG:
+			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			break;
+		case DNS_TYPE_WINS:
+			DNSFormatRRDataWINS(interp, resflags, resObjPtr,
+					rr->Data.WINS.dwMappingFlag,
+					rr->Data.WINS.dwLookupTimeout,
+					rr->Data.WINS.dwCacheTimeout,
+					rr->Data.WINS.cWinsServerCount,
+					rr->Data.WINS.WinsServers);
+			break;
+		case DNS_TYPE_WINSR:
+			DNSFormatRRDataWINSR(interp, resflags, resObjPtr,
+					rr->Data.WINSR.dwMappingFlag,
+					rr->Data.WINSR.dwLookupTimeout,
+					rr->Data.WINSR.dwCacheTimeout,
+					rr->Data.WINSR.pNameResultDomain);
+			break;
 		default:
 			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
 			break;
@@ -304,7 +352,11 @@ Impl_Resolve (
 		&recPtr,
 		NULL
 	);
-	if (res != ERROR_SUCCESS) {
+	if (res == DNS_ERROR_RCODE_NAME_ERROR) {
+		/* No records for the given query */
+		Tcl_ResetResult(interp);
+		return TCL_OK;
+	} else if (res != ERROR_SUCCESS) {
 		Tcl_ResetResult(interp);
 		AppendSystemError(interp, res);
 		return TCL_ERROR;

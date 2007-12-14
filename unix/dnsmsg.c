@@ -619,6 +619,7 @@ DNSMsgParseRRDataNXT (
 			Tcl_NewStringObj(name, -1));
 
 	/* Bit map */
+	/* TODO Win32 uses an array of WORDs for this */
 	Tcl_ListObjAppendElement(interp, *resObjPtr,
 			Tcl_NewByteArrayObj(mh->cur, rdlength - (endPtr - mh->cur)));
 
