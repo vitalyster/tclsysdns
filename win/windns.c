@@ -223,7 +223,17 @@ DNSParseRRData (
 					NormalizeWinIP6Addr(rr->Data.AAAA.Ip6Address).IP6Word);
 			break;
 		case DNS_TYPE_SIG:
-			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			DNSFormatRRDataSIG(interp, resflags, resObjPtr,
+					rr->Data.SIG.wTypeCovered,
+					rr->Data.SIG.chAlgorithm,
+					rr->Data.SIG.chLabelCount,
+					rr->Data.SIG.dwOriginalTtl,
+					rr->Data.SIG.dwExpiration,
+					rr->Data.SIG.dwTimeSigned,
+					rr->Data.SIG.wKeyTag,
+					rr->Data.SIG.pNameSigner,
+					rr->Data.SIG.Signature);
+			//*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
 			break;
 		case DNS_TYPE_KEY:
 			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);

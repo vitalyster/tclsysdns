@@ -466,3 +466,32 @@ DNSFormatRRDataWINSR (
 			NULL);
 }
 
+void
+DNSFormatRRDataSIG (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short typecovered,
+	const unsigned char algo,
+	const unsigned char labels,
+	const unsigned long origttl,
+	const unsigned long sigexpn,
+	const unsigned long siginceptn,
+	const unsigned short keytag,
+	const char signername[],
+	const unsigned char signature[1]
+	)
+{
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"type",       DNSQTypeIndexToMnemonic(typecovered),
+			"algorithm",  Tcl_NewIntObj(algo),
+			"labels",     Tcl_NewIntObj(labels),
+			"origttl",    Tcl_NewWideIntObj(origttl),
+			"expiretion", Tcl_NewWideIntObj(sigexpn),
+			"incepted",   Tcl_NewWideIntObj(siginceptn),
+			"keytag",     Tcl_NewIntObj(keytag),
+			"signer",     Tcl_NewStringObj(signername, -1),
+			"signature",  Tcl_NewByteArrayObj(signature),
+			NULL);
+}
+

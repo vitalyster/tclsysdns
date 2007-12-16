@@ -158,3 +158,18 @@ DNSFormatRRDataWINSR (
 	const unsigned long cacheTimeout,
 	const char name[]);
 
+void
+DNSFormatRRDataSIG (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short typecovered,
+	const unsigned char algo,
+	const unsigned char labels,
+	const unsigned long origttl,
+	const unsigned long sigexpn,
+	const unsigned long siginceptn,
+	const unsigned short keytag,
+	const char signername[],
+	const unsigned char signature[1]);
+
