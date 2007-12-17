@@ -334,26 +334,25 @@ DNSParseRRSection (
 	Tcl_Obj *resObj
 	)
 {
-	Tcl_Obj *sectObj, *rrObj, *dataObj;
+	Tcl_Obj *dataObj;
 
-	if (resflags & RES_MULTIPLE) {
-		sectObj = Tcl_NewListObj(0, NULL);
-		Tcl_ListObjAppendElement(interp, resObj, sectObj);
-	} else {
-		sectObj = resObj;
-	}
-	rrObj = Tcl_NewListObj(0, NULL);
-	Tcl_ListObjAppendElement(interp, sectObj, rrObj);
+	DNSParseRRData(interp, rr, resflags, &dataObj);
+
 	if (resflags & RES_DETAIL) {
-		DNSFormatRRHeader(interp, resflags, rrObj,
+		Tcl_Obj *sectObj = Tcl_NewListObj(0, NULL);
+
+		DNSFormatRRHeader(interp, resflags, sectObj,
 				rr->pName,
 				rr->wType,
 				DNS_CLASS_INTERNET,
 				rr->dwTtl,
 				rr->wDataLength);
+
+		Tcl_ListObjAppendElement(interp, sectObj, dataObj);
+		Tcl_ListObjAppendElement(interp, resObj, sectObj);
+	} else {
+		Tcl_ListObjAppendElement(interp, resObj, dataObj);
 	}
-	DNSParseRRData(interp, rr, resflags, &dataObj);
-	Tcl_ListObjAppendElement(interp, rrObj, dataObj);
 }
 
 int
@@ -378,8 +377,8 @@ Impl_Resolve (
 		&recPtr,
 		NULL
 	);
-	if (res == DNS_ERROR_RCODE_NAME_ERROR) {
-		/* No records for the given query (NXDOMAIN) */
+	if (res == DNS_ERROR_RCODE_NAME_ERROR /* NXDOMAIN */
+			|| res == DNS_INFO_NO_RECORDS) {
 		Tcl_ResetResult(interp);
 		return TCL_OK;
 	} else if (res != ERROR_SUCCESS) {
