@@ -21,13 +21,13 @@ Sysdns_Resolve (
 		"-class", "-type",
 		"-question", "-answer", "-authority", "-additional", "-all",
 		"-detailed", "-headers",
-		"-names",
+		"-sectionnames", "-fieldnames",
 		NULL };
 	typedef enum {
 		OPT_CLASS, OPT_TYPE,
 		OPT_QUESTION, OPT_ANSWER, OPT_AUTH, OPT_ADD, OPT_ALL,
 		OPT_DETAIL, OPT_HEADERS,
-		OPT_NAMES,
+		OPT_SECTNAMES, OPT_NAMES
 	} opts_t;
 	int opt, i, sections;
 	unsigned short qclass, qtype;
@@ -105,6 +105,10 @@ Sysdns_Resolve (
 			case OPT_DETAIL:
 			case OPT_HEADERS:
 				resflags |= RES_DETAIL;
+				++i;
+				break;
+			case OPT_SECTNAMES:
+				resflags |= RES_SECTNAMES;
 				++i;
 				break;
 			case OPT_NAMES:

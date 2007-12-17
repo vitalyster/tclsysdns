@@ -125,7 +125,7 @@ DNSFormatRRDataNXT (
 	Tcl_Obj **resObjPtr,
 	const char next[],
 	const int count,
-	const char bitmap[1]);
+	const char bitmap[]);
 
 void
 DNSFormatRRDataSRV (
@@ -146,7 +146,7 @@ DNSFormatRRDataWINS (
 	const unsigned long lkupTimeout,
 	const unsigned long cacheTimeout,
 	const int count,
-	const unsigned long addrs[1]);
+	const unsigned long addrs[]);
 
 void
 DNSFormatRRDataWINSR (
@@ -171,5 +171,17 @@ DNSFormatRRDataSIG (
 	const unsigned long siginceptn,
 	const unsigned short keytag,
 	const char signername[],
-	const unsigned char signature[1]);
+	const int siglen,
+	const unsigned char signature[]);
+
+void
+DNSFormatRRDataKEY (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short flags,
+	const unsigned char proto,
+	const unsigned char algo,
+	const int keylen,
+	const unsigned char pubkey[]);
 

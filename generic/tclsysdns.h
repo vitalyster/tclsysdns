@@ -15,9 +15,10 @@
 #define RES_ADD         16
 #define RES_ALL         (RES_QUESTION | RES_ANSWER | RES_AUTH | RES_ADD)
 #define RES_DETAIL      32   /* Add data from section headers to the output */
-#define RES_NAMES       64   /* Add names of each parsed parameter to the output */
+#define RES_SECTNAMES   64   /* Add section name before each section */
+#define RES_NAMES       128  /* Add data field name before each data field */
 #define RES_FULL        (RES_DETAIL | RES_NAMES)
-#define RES_MULTIPLE    128  /* more than one record in the output list */
+#define RES_MULTIPLE    256  /* more than one record in the output list */
 
 int
 Impl_GetNameservers (

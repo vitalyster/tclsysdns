@@ -365,7 +365,7 @@ DNSFormatRRDataNXT (
 	Tcl_Obj **resObjPtr,
 	const char next[],
 	const int count,
-	const char bitmap[1]
+	const char bitmap[]
 	)
 {
 	DNSFormatRRDataList(interp, resflags, resObjPtr,
@@ -402,7 +402,7 @@ DNSFormatRRDataWINS (
 	const unsigned long lkupTimeout,
 	const unsigned long cacheTimeout,
 	const int count,
-	const unsigned long addrs[1]
+	const unsigned long addrs[]
 	)
 {
 	Tcl_Obj *addrsObj;
@@ -479,7 +479,8 @@ DNSFormatRRDataSIG (
 	const unsigned long siginceptn,
 	const unsigned short keytag,
 	const char signername[],
-	const unsigned char signature[1]
+	const int siglen,
+	const unsigned char signature[]
 	)
 {
 	DNSFormatRRDataList(interp, resflags, resObjPtr,
@@ -491,7 +492,50 @@ DNSFormatRRDataSIG (
 			"incepted",   Tcl_NewWideIntObj(siginceptn),
 			"keytag",     Tcl_NewIntObj(keytag),
 			"signer",     Tcl_NewStringObj(signername, -1),
-			"signature",  Tcl_NewByteArrayObj(signature),
+			"signature",  Tcl_NewByteArrayObj(signature, siglen),
+			NULL);
+}
+
+void
+DNSFormatRRDataKEY (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short flags,
+	const unsigned char proto,
+	const unsigned char algo,
+	const int keylen,
+	const unsigned char pubkey[]
+	)
+{
+	Tcl_Obj *protoObj;
+	
+	switch (proto) {
+		case 1:
+			protoObj = Tcl_NewStringObj("tls", -1);
+			break;
+		case 2:
+			protoObj = Tcl_NewStringObj("email", -1);
+			break;
+		case 3:
+			protoObj = Tcl_NewStringObj("dnssec", -1);
+			break;
+		case 4:
+			protoObj = Tcl_NewStringObj("ipsec", -1);
+			break;
+		case 255:
+			protoObj = Tcl_NewStringObj("all", -1);
+			break;
+		default:
+			protoObj = Tcl_NewIntObj(proto);
+			break;
+	}
+
+	DNSFormatRRDataList(interp, resflags, resObjPtr,
+			"flags",      Tcl_NewIntObj(flags),
+			"protocol",   protoObj,
+			"algorithm",  Tcl_NewIntObj(algo),
+			"publickey",  Tcl_NewByteArrayObj(pubkey, keylen),
 			NULL);
 }
 

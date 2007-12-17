@@ -151,6 +151,17 @@ NormalizeWinIP6Addr (
 	return out;
 }
 
+/* These macros are missing for some reason from WinDNS.h so
+ * we introduce it here to calculate the length of the "signature"
+ * data field in RR DATA sections of type SIG
+ * and the "public key" data field in RR DATA sections
+ * of type KEY.
+ */
+#define DNS_SIG_RECORD_LENGTH(ByteCount) \
+		(FIELD_OFFSET(DNS_SIG_DATA, Signature) + (ByteCount))
+#define DNS_KEY_RECORD_LENGTH(ByteCount) \
+		(FIELD_OFFSET(DNS_KEY_DATA, Key) + (ByteCount))
+
 static void
 DNSParseRRData (
 	Tcl_Interp *interp,
@@ -232,11 +243,16 @@ DNSParseRRData (
 					rr->Data.SIG.dwTimeSigned,
 					rr->Data.SIG.wKeyTag,
 					rr->Data.SIG.pNameSigner,
+					DNS_SIG_RECORD_LENGTH(rr->wDataLength),
 					rr->Data.SIG.Signature);
-			//*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
 			break;
 		case DNS_TYPE_KEY:
-			*resObjPtr = Tcl_NewStringObj("UNSUPPORTED", -1);
+			DNSFormatRRDataKEY(interp, resflags, resObjPtr,
+					rr->Data.KEY.wFlags,
+					rr->Data.KEY.chProtocol,
+					rr->Data.KEY.chAlgorithm,
+					DNS_KEY_RECORD_LENGTH(rr->wDataLength),
+					rr->Data.KEY.Key);
 			break;
 		case DNS_TYPE_ATMA:
 			DNSFormatRRDataATMA(interp, resflags, resObjPtr,
@@ -363,7 +379,7 @@ Impl_Resolve (
 		NULL
 	);
 	if (res == DNS_ERROR_RCODE_NAME_ERROR) {
-		/* No records for the given query */
+		/* No records for the given query (NXDOMAIN) */
 		Tcl_ResetResult(interp);
 		return TCL_OK;
 	} else if (res != ERROR_SUCCESS) {
@@ -372,37 +388,41 @@ Impl_Resolve (
 		return TCL_ERROR;
 	}
 
-	questObj = answObj = authObj = addObj = NULL;
+	if (resflags & RES_QUESTION) {
+		questObj = Tcl_NewListObj(0, NULL);
+	}
+	if (resflags & RES_ANSWER) {
+		answObj  = Tcl_NewListObj(0, NULL);
+	}
+	if (resflags & RES_AUTH) {
+		authObj  = Tcl_NewListObj(0, NULL);
+	}
+	if (resflags & RES_ADD) {
+		addObj   = Tcl_NewListObj(0, NULL);
+	}
+
 	sectPtr = recPtr;
 	while (sectPtr != NULL) {
 		switch (sectPtr->Flags.S.Section) {
 			case DNSREC_QUESTION:
-				if (resflags & RES_QUESTION == 0) break;
-				if (questObj == NULL) {
-					questObj = Tcl_NewListObj(0, NULL);
+				if (resflags & RES_QUESTION) {
+					DNSParseQuestion(interp, sectPtr, resflags, questObj);
 				}
-				DNSParseQuestion(interp, sectPtr, resflags, questObj);
 				break;
 			case DNSREC_ANSWER:
-				if (resflags & RES_ANSWER == 0) break;
-				if (answObj == NULL) {
-					answObj = Tcl_NewListObj(0, NULL);
+				if (resflags & RES_ANSWER) {
+					DNSParseRRSection(interp, sectPtr, resflags, answObj);
 				}
-				DNSParseRRSection(interp, sectPtr, resflags, answObj);
 				break;
 			case DNSREC_AUTHORITY:
-				if (resflags & RES_AUTH == 0) break;
-				if (authObj == NULL) {
-					authObj = Tcl_NewListObj(0, NULL);
+				if (resflags & RES_AUTH) {
+					DNSParseRRSection(interp, sectPtr, resflags, authObj);
 				}
-				DNSParseRRSection(interp, sectPtr, resflags, authObj);
 				break;
 			case DNSREC_ADDITIONAL:
-				if (resflags & RES_ADD == 0) break;
-				if (addObj == NULL) {
-					addObj = Tcl_NewListObj(0, NULL);
+				if (resflags & RES_ADD) {
+					DNSParseRRSection(interp, sectPtr, resflags, addObj);
 				}
-				DNSParseRRSection(interp, sectPtr, resflags, addObj);
 				break;
 		}
 		sectPtr = sectPtr->pNext;
@@ -413,34 +433,58 @@ Impl_Resolve (
 	/* Assembly of the result set */
 	resObj = Tcl_NewListObj(0, NULL);
 
-	if ((resflags & RES_QUESTION) && questObj != NULL) {
-		if (resflags & RES_NAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("question", -1));
+	do {
+		const int RES_WANTSLIST = (RES_SECTNAMES | RES_MULTIPLE);
+
+		if (resflags & RES_QUESTION) {
+			if (resflags & RES_SECTNAMES) {
+				Tcl_ListObjAppendElement(interp, resObj,
+						Tcl_NewStringObj("question", -1));
+			}
+			if (resflags & RES_WANTSLIST) {
+				Tcl_ListObjAppendElement(interp, resObj, questObj);
+			} else {
+				Tcl_ListObjAppendList(interp, resObj, questObj);
+				Tcl_DecrRefCount(questObj);
+			}
 		}
-		Tcl_ListObjAppendElement(interp, resObj, questObj);
-	}
-	if ((resflags & RES_ANSWER) && answObj != NULL) {
-		if (resflags & RES_NAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("answer", -1));
+		if (resflags & RES_ANSWER) {
+			if (resflags & RES_SECTNAMES) {
+				Tcl_ListObjAppendElement(interp, resObj,
+						Tcl_NewStringObj("answer", -1));
+			}
+			if (resflags & RES_WANTSLIST) {
+				Tcl_ListObjAppendElement(interp, resObj, answObj);
+			} else {
+				Tcl_ListObjAppendList(interp, resObj, answObj);
+				Tcl_DecrRefCount(answObj);
+			}
 		}
-		Tcl_ListObjAppendElement(interp, resObj, answObj);
-	}
-	if ((resflags & RES_AUTH) && authObj != NULL) {
-		if (resflags & RES_NAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("authority", -1));
+		if (resflags & RES_AUTH) {
+			if (resflags & RES_SECTNAMES) {
+				Tcl_ListObjAppendElement(interp, resObj,
+						Tcl_NewStringObj("authority", -1));
+			}
+			if (resflags & RES_WANTSLIST) {
+				Tcl_ListObjAppendElement(interp, resObj, authObj);
+			} else {
+				Tcl_ListObjAppendList(interp, resObj, authObj);
+				Tcl_DecrRefCount(authObj);
+			}
 		}
-		Tcl_ListObjAppendElement(interp, resObj, authObj);
-	}
-	if ((resflags & RES_ADD) && addObj != NULL) {
-		if (resflags & RES_NAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("additional", -1));
+		if (resflags & RES_ADD) {
+			if (resflags & RES_SECTNAMES) {
+				Tcl_ListObjAppendElement(interp, resObj,
+						Tcl_NewStringObj("additional", -1));
+			}
+			if (resflags & RES_WANTSLIST) {
+				Tcl_ListObjAppendElement(interp, resObj, addObj);
+			} else {
+				Tcl_ListObjAppendList(interp, resObj, addObj);
+				Tcl_DecrRefCount(addObj);
+			}
 		}
-		Tcl_ListObjAppendElement(interp, resObj, addObj);
-	}
+	} while (0);
 
 	Tcl_SetObjResult(interp, resObj);
 	return TCL_OK;
