@@ -310,20 +310,14 @@ DNSParseQuestion (
 	Tcl_Obj *resObj
 	)
 {
-	Tcl_Obj *sectObj, *dataObj;
+	Tcl_Obj *dataObj;
 
-	if (resflags & RES_MULTIPLE) {
-		sectObj = Tcl_NewListObj(0, NULL);
-		Tcl_ListObjAppendElement(interp, resObj, sectObj);
-	} else {
-		sectObj = resObj;
-	}
 	dataObj = Tcl_NewListObj(0, NULL);
-	Tcl_ListObjAppendElement(interp, sectObj, dataObj);
 	DNSFormatQuestion(interp, resflags, dataObj,
 			rr->pName,
 			rr->wType,
 			DNS_CLASS_INTERNET);
+	Tcl_ListObjAppendElement(interp, resObj, dataObj);
 }
 
 static void
@@ -372,7 +366,7 @@ Impl_Resolve (
 	res = DnsQuery_UTF8(
 		Tcl_GetStringFromObj(queryObj, NULL),
 		qtype,
-		qclass,
+		DNS_QUERY_STANDARD | DNS_QUERY_DONT_RESET_TTL_VALUES,
 		NULL,
 		&recPtr,
 		NULL
