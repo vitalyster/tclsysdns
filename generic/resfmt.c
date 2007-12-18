@@ -280,7 +280,7 @@ DNSFormatRRDataNULL (
 	const int resflags,
 	Tcl_Obj **resObjPtr,
 	const int count,
-	const char data[]
+	const unsigned char data[]
 	)
 {
 	DNSFormatRRData(interp, resflags, resObjPtr,
@@ -295,7 +295,7 @@ DNSFormatRRDataWKS (
 	const unsigned long addr,
 	const int proto,
 	const int bmlen,
-	const char bitmask[]
+	const unsigned char bitmask[]
 	)
 {
 	struct in_addr in;
@@ -365,7 +365,7 @@ DNSFormatRRDataNXT (
 	Tcl_Obj **resObjPtr,
 	const char next[],
 	const int count,
-	const char bitmap[]
+	const unsigned char bitmap[]
 	)
 {
 	DNSFormatRRDataList(interp, resflags, resObjPtr,

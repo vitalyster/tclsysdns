@@ -91,7 +91,7 @@ DNSFormatRRDataNULL (
 	const int resflags,
 	Tcl_Obj **resObjPtr,
 	const int count,
-	const char data[]);
+	const unsigned char data[]);
 
 void
 DNSFormatRRDataWKS (
@@ -101,7 +101,7 @@ DNSFormatRRDataWKS (
 	const unsigned long addr,
 	const int proto,
 	const int bmlen,
-	const char bitmask[]);
+	const unsigned char bitmask[]);
 
 void
 DNSFormatRRDataAAAA (
@@ -125,7 +125,7 @@ DNSFormatRRDataNXT (
 	Tcl_Obj **resObjPtr,
 	const char next[],
 	const int count,
-	const char bitmap[]);
+	const unsigned char bitmap[]);
 
 void
 DNSFormatRRDataSRV (
