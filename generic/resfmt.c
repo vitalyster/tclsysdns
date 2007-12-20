@@ -308,11 +308,8 @@ DNSFormatRRDataWKS (
 			NULL);
 }
 
-void
-DNSFormatRRDataAAAA (
-	Tcl_Interp *interp,
-	const int resflags,
-	Tcl_Obj **resObjPtr,
+Tcl_Obj *
+DNSFormatAAAA (
 	const unsigned short parts[8]
 	)
 {
@@ -322,8 +319,20 @@ DNSFormatRRDataAAAA (
 			parts[0], parts[1], parts[2], parts[3],
 			parts[4], parts[5], parts[6], parts[7]);
 
+	return Tcl_NewStringObj(buf, -1);
+}
+
+void
+DNSFormatRRDataAAAA (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj **resObjPtr,
+	const unsigned short parts[8]
+	)
+{
+
 	DNSFormatRRData(interp, resflags, resObjPtr,
-			"address", Tcl_NewStringObj(buf, -1));
+			"address", DNSFormatAAAA(parts));
 }
 
 void

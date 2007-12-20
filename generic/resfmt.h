@@ -103,6 +103,10 @@ DNSFormatRRDataWKS (
 	const int bmlen,
 	const unsigned char bitmask[]);
 
+Tcl_Obj *
+DNSFormatAAAA (
+	const unsigned short parts[8]);
+
 void
 DNSFormatRRDataAAAA (
 	Tcl_Interp *interp,
