@@ -16,15 +16,56 @@
 
 extern struct __res_state _res;
 
+typedef struct {
+	/* Resolver's options */
+	unsigned long res_opts;
+} InterpData;
+
+#define GetResOpts (_res.options)
+#define ResOpts_SaveTo(id) (id->res_opts = _res.options)
+#define ResOpts_LoadFrom(id) (_res.options = id->res_opts)
+
+int
+Impl_Init (
+	Tcl_Interp *interp,
+	ClientData *clientDataPtr
+	)
+{
+	InterpData *interpData;
+
+	interpData = (InterpData *) ckalloc(sizeof(InterpData));
+
+	if (! (_res.options & RES_INIT)) {
+		res_init();
+	}
+	ResOpts_SaveTo(interpData);
+
+	*clientDataPtr = (ClientData *)interpData;
+	return TCL_OK;
+}
+
+void
+Impl_Cleanup (
+	ClientData clientData
+	)
+{
+	ckfree((char *) clientData);
+}
+
 int
 Impl_GetNameservers (
+	ClientData clientData,
 	Tcl_Interp *interp
 	)
 {
+	InterpData *interpData;
 	Tcl_Obj *nsObj;
 	int i;
 
-	if (! (_res.options & RES_INIT)) {
+	interpData = (InterpData *) clientData;
+	ResOpts_LoadFrom(interpData);
+
+	if (! (GetResOpts & RES_INIT)) {
 		res_init();
 	}
 
@@ -46,6 +87,7 @@ Impl_GetNameservers (
 
 int
 Impl_Resolve (
+	ClientData clientData,
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
 	const unsigned short qclass,
@@ -53,8 +95,12 @@ Impl_Resolve (
 	const unsigned int resflags
 )
 {
+	InterpData *interpData;
 	unsigned char answer[4096];
 	int len;
+
+	interpData = (InterpData *) clientData;
+	ResOpts_LoadFrom(interpData);
 
 	Tcl_SetErrno(0);
 	len = res_search(Tcl_GetString(queryObj), qclass, qtype,

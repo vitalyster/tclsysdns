@@ -21,11 +21,22 @@
 #define RES_MULTIPLE    256  /* more than one record in the output list */
 
 int
+Impl_Init (
+	Tcl_Interp *interp,
+	ClientData *clientDataPtr);
+
+void
+Impl_Cleanup (
+	ClientData clientData);
+
+int
 Impl_GetNameservers (
+	ClientData clientData,
 	Tcl_Interp *interp);
 
 int
 Impl_Resolve (
+	ClientData clientData,
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
 	const unsigned short qclass,

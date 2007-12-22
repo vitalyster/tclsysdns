@@ -124,7 +124,7 @@ Sysdns_Resolve (
 		resflags |= RES_MULTIPLE;
 	}
 
-	return Impl_Resolve(interp, objv[1], qclass, qtype, resflags);
+	return Impl_Resolve(clientData, interp, objv[1], qclass, qtype, resflags);
 }
 
 static int
@@ -140,7 +140,7 @@ Sysdns_Nameservers (
 		return TCL_ERROR;
 	}
 
-	return Impl_GetNameservers(interp);
+	return Impl_GetNameservers(clientData, interp);
 }
 
 #ifdef BUILD_sysdns
@@ -151,6 +151,8 @@ Sysdns_Nameservers (
 EXTERN int
 Sysdns_Init(Tcl_Interp * interp)
 {
+	ClientData interpData;
+
 #ifdef USE_TCL_STUBS
 	if (Tcl_InitStubs(interp, "8.1", 0) == NULL) {
 		return TCL_ERROR;
@@ -160,12 +162,16 @@ Sysdns_Init(Tcl_Interp * interp)
 		return TCL_ERROR;
 	}
 
+	if (Impl_Init(interp, &interpData) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
 	Tcl_CreateObjCommand(interp, "::sysdns::resolve",
 			Sysdns_Resolve,
-			(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+			(ClientData) interpData, (Tcl_CmdDeleteProc *) Impl_Cleanup);
 	Tcl_CreateObjCommand(interp, "::sysdns::nameservers",
 			Sysdns_Nameservers,
-			(ClientData) NULL, (Tcl_CmdDeleteProc *) NULL);
+			(ClientData) interpData, (Tcl_CmdDeleteProc *) NULL);
 
 	if (Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION) != TCL_OK) {
 		return TCL_ERROR;

@@ -2,14 +2,15 @@ $Id$
 
 HIGH:
 
-* Formatting of IPv4 and IPv6 addresss should be moved to resfmt
-  module; the addresses should be passed to formatters as
-  unsigned long and 8 unsigned shorts, respectively, or
-  via some (standard?) structs (see DNS_IP6_ADDRESS in WinDNS.h
-  for example).
+* Think of defining an "incomplete type" for the "interp
+  data" concept in tclsysdns.h + change the definition
+  of corresponding formal parameters to the Impl_* procs.
+  This type could be fully speficied in the respective
+  implementations.
 
-* (Win32) Extra lists in sections when -names or (or -headers?)
-  are enabled.
+* (resolve) Unneeded nested lists in result record set if
+  just one section (-answer) is requested and each RR in
+  a section is formatted as a list (e.g., MX or SRV) types.
 
 * In resolver part, should probably do an early checks to skip
   parsing of RRs if none of them is needed for result set.
@@ -19,16 +20,28 @@ HIGH:
   (seems like VC defines several types that are unusable
   in queries and thus should be avoided).
 
+* Implement per-interp data storage for win32, store a
+  DNS query options there.
+
+* Implement [configure] method.
+
+* Implement "-raw" format option for [resolve]. This implies
+  checking for the OS version on Windows (which should
+  probably be done once at startup and cached).
+
+* Implement [refresh] or [reinit] method. It should re-init
+  the resolver (for example, by re-reading its config file.
+  On all systems on which such an action has no sense
+  (like on Windows) this should be a silent no-op.
+  Also it may have an option named "-resetoptions" (or
+  something like this) which, if present, should request
+  re-initialization of the resolver options configured
+  via [configure] command.
+
 * Investigate why one additional bogus (?) IP is returned
   for the "A" RR for the "www.gnu.org" query on Win32.
 
 NORMAL:
-
-* (Win32) looks like question isn't at all returned w/o
-  special options.
-
-* (Win32) DNS_RECORD lacks "class" field. We default to "IN"
-  as of now.
 
 * Bring MinGW support in sync.
 
@@ -88,5 +101,14 @@ UNCERTAIN:
   2007-12-07 it suddenly works w/o any changes to the code.
   dn_expand() is confirmed to expand any <domain-name>s,
   including non-compressed.
+
+* (Win32) looks like question isn't at all returned w/o
+  special options.
+  First investigation has shown that the question setion is,
+  indeed, not returned. Also looks like this also happens for
+  the "authority" section.
+
+* (Win32) DNS_RECORD lacks "class" field. We default to "IN"
+  as of now.
 
 # vim:tw=64:noet
