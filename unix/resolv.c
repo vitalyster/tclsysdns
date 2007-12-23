@@ -121,3 +121,13 @@ Impl_Resolve (
 	return DNSParseMessage(interp, answer, len, resflags);
 }
 
+int
+Impl_Reinit (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int flags)
+{
+	Tcl_ResetResult(interp);
+	return TCL_OK;
+}
+

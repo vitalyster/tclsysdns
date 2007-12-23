@@ -9,6 +9,61 @@
 #include "tclsysdns.h"
 #include "dnsparams.h"
 
+typedef struct {
+	int refcount;
+	ClientData impldata;
+} PkgInterpData;
+
+static int
+Sysdns_PkgInit (
+	Tcl_Interp *interp,
+	ClientData *clientDataPtr
+	)
+{
+	PkgInterpData *interpData;
+
+	interpData = (PkgInterpData *) ckalloc(sizeof(PkgInterpData));
+
+	if (Impl_Init(interp, &(interpData->impldata)) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
+	interpData->refcount = 0;
+	*clientDataPtr = (ClientData *) interpData;
+
+	return TCL_OK;
+}
+
+static void
+Sysdns_Cleanup (
+	ClientData clientData
+	)
+{
+	PkgInterpData *interpData;
+
+	interpData = (PkgInterpData *) clientData;
+
+	--interpData->refcount;
+
+	if (interpData->refcount == 0) {
+		Impl_Cleanup(interpData->impldata);
+		ckfree((char *) interpData);
+	}
+}
+
+static ClientData
+Sysdns_RefPkgInterpData (
+	ClientData clientData
+	)
+{
+	PkgInterpData *interpData;
+
+	interpData = (PkgInterpData *) clientData;
+	++interpData->refcount;
+
+	return clientData;
+}
+
 static int
 Sysdns_Resolve (
 	ClientData clientData,
@@ -29,6 +84,7 @@ Sysdns_Resolve (
 		OPT_DETAIL, OPT_HEADERS,
 		OPT_SECTNAMES, OPT_NAMES
 	} opts_t;
+
 	int opt, i, sections;
 	unsigned short qclass, qtype;
 	unsigned int resflags;
@@ -143,6 +199,42 @@ Sysdns_Nameservers (
 	return Impl_GetNameservers(clientData, interp);
 }
 
+static int
+Sysdns_Reinit (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	int objc,
+	Tcl_Obj *const objv[]
+	)
+{
+	const char *optnames[] = {
+		"-resetoptions",
+		NULL };
+	typedef enum {
+		OPT_RESETOPTS
+	} opts_t;
+
+	int opt, i, flags;
+
+	flags = 0;
+
+	for (i = 1; i < objc; ) {
+		if (Tcl_GetIndexFromObj(interp, objv[i],
+					optnames, "option", 0, &opt) != TCL_OK) {
+			return TCL_ERROR;
+		}
+
+		switch ((opts_t) opt) {
+			case OPT_RESETOPTS:
+				flags |= REINIT_RESETOPTS;
+				++i;
+				break;
+		}
+	}
+
+	return Impl_Reinit(clientData, interp, flags);
+}
+
 #ifdef BUILD_sysdns
 #undef TCL_STORAGE_CLASS
 #define TCL_STORAGE_CLASS DLLEXPORT
@@ -151,7 +243,7 @@ Sysdns_Nameservers (
 EXTERN int
 Sysdns_Init(Tcl_Interp * interp)
 {
-	ClientData interpData;
+	ClientData pkgInterpData;
 
 #ifdef USE_TCL_STUBS
 	if (Tcl_InitStubs(interp, "8.1", 0) == NULL) {
@@ -162,16 +254,19 @@ Sysdns_Init(Tcl_Interp * interp)
 		return TCL_ERROR;
 	}
 
-	if (Impl_Init(interp, &interpData) != TCL_OK) {
+	if (Sysdns_PkgInit(interp, &pkgInterpData) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
 	Tcl_CreateObjCommand(interp, "::sysdns::resolve",
 			Sysdns_Resolve,
-			(ClientData) interpData, (Tcl_CmdDeleteProc *) Impl_Cleanup);
+			Sysdns_RefPkgInterpData(pkgInterpData), Sysdns_Cleanup);
 	Tcl_CreateObjCommand(interp, "::sysdns::nameservers",
 			Sysdns_Nameservers,
-			(ClientData) interpData, (Tcl_CmdDeleteProc *) NULL);
+			Sysdns_RefPkgInterpData(pkgInterpData), Sysdns_Cleanup);
+	Tcl_CreateObjCommand(interp, "::sysdns::reinit",
+			Sysdns_Reinit,
+			Sysdns_RefPkgInterpData(pkgInterpData), Sysdns_Cleanup);
 
 	if (Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION) != TCL_OK) {
 		return TCL_ERROR;

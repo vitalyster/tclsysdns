@@ -20,6 +20,9 @@
 #define RES_FULL        (RES_DETAIL | RES_NAMES)
 #define RES_MULTIPLE    256  /* more than one record in the output list */
 
+/* Flags for the Impl_Reinit command */
+#define REINIT_RESETOPTS 1   /* reset resolver options */
+
 int
 Impl_Init (
 	Tcl_Interp *interp,
@@ -42,4 +45,10 @@ Impl_Resolve (
 	const unsigned short qclass,
 	const unsigned short qtype,
 	const unsigned int resflags);
+
+int
+Impl_Reinit (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int flags);
 
