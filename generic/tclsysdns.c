@@ -52,7 +52,7 @@ Sysdns_Cleanup (
 }
 
 static ClientData
-Sysdns_RefPkgInterpData (
+Sysdns_RefInterpData (
 	ClientData clientData
 	)
 {
@@ -61,7 +61,7 @@ Sysdns_RefPkgInterpData (
 	interpData = (PkgInterpData *) clientData;
 	++interpData->refcount;
 
-	return clientData;
+	return interpData->impldata;
 }
 
 static int
@@ -260,13 +260,13 @@ Sysdns_Init(Tcl_Interp * interp)
 
 	Tcl_CreateObjCommand(interp, "::sysdns::resolve",
 			Sysdns_Resolve,
-			Sysdns_RefPkgInterpData(pkgInterpData), Sysdns_Cleanup);
+			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
 	Tcl_CreateObjCommand(interp, "::sysdns::nameservers",
 			Sysdns_Nameservers,
-			Sysdns_RefPkgInterpData(pkgInterpData), Sysdns_Cleanup);
+			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
 	Tcl_CreateObjCommand(interp, "::sysdns::reinit",
 			Sysdns_Reinit,
-			Sysdns_RefPkgInterpData(pkgInterpData), Sysdns_Cleanup);
+			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
 
 	if (Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION) != TCL_OK) {
 		return TCL_ERROR;
