@@ -19,11 +19,14 @@ extern struct __res_state _res;
 typedef struct {
 	/* Resolver's options */
 	unsigned long res_opts;
+	unsigned long def_opts;
 } InterpData;
 
 #define GetResOpts (_res.options)
-#define ResOpts_SaveTo(id) (id->res_opts = _res.options)
-#define ResOpts_LoadFrom(id) (_res.options = id->res_opts)
+#define ResOpts_SaveTo(id) ((id)->res_opts = _res.options)
+#define ResOpts_LoadFrom(id) (_res.options = (id)->res_opts)
+#define ResDefs_SaveTo(id) ((id)->def_opts = _res.options)
+#define ResDefs_LoadFrom(id) (_res.options = (id)->def_opts)
 
 int
 Impl_Init (
@@ -35,10 +38,11 @@ Impl_Init (
 
 	interpData = (InterpData *) ckalloc(sizeof(InterpData));
 
-	if (! (_res.options & RES_INIT)) {
+	if (! (GetResOpts & RES_INIT)) {
 		res_init();
 	}
 	ResOpts_SaveTo(interpData);
+	ResDefs_SaveTo(interpData);
 
 	*clientDataPtr = (ClientData *)interpData;
 	return TCL_OK;
@@ -127,7 +131,12 @@ Impl_Reinit (
 	Tcl_Interp *interp,
 	const int flags)
 {
-	Tcl_ResetResult(interp);
+	res_init();
+
+	if (flags & REINIT_RESETOPTS) {
+		ResDefs_LoadFrom((InterpData *) clientData);
+	}
+
 	return TCL_OK;
 }
 
