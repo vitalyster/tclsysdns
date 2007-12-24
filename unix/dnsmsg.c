@@ -877,6 +877,66 @@ DNSMsgParseRRHeader (
 	return TCL_OK;
 }
 
+static int
+DNSMsgParseRRSection (
+	Tcl_Interp *interp,
+	const char name[],
+	const int wanted,
+	const int nrrs,
+	dns_msg_handle *mh,
+	const int resflags,
+	Tcl_Obj *resObj
+	)
+{
+	const int RES_WANTLIST = (RES_SECTNAMES | RES_MULTIPLE);
+	Tcl_Obj *sectObj;
+	int i;
+
+	if (wanted) {
+		if (resflags & RES_SECTNAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj(name, -1));
+		}
+		if (resflags & RES_WANTLIST) {
+			sectObj = Tcl_NewListObj(0, NULL);
+			Tcl_ListObjAppendElement(interp, resObj, sectObj);
+		} else {
+			sectObj = resObj;
+		}
+	}
+
+	for (i = 0; i < nrrs; ++i) {
+		dns_msg_rr rr;
+
+		if (DNSMsgParseRRHeader(interp, mh, &rr) != TCL_OK) {
+			Tcl_DecrRefCount(resObj);
+			return TCL_ERROR;
+		}
+
+		if (wanted) {
+			Tcl_Obj *dataObj;
+			if (DNSMsgParseRRData(interp, mh, rr.type, rr.rdlength,
+						resflags, &dataObj) != TCL_OK) {
+				Tcl_DecrRefCount(resObj);
+				return TCL_ERROR;
+			}
+			if (resflags & RES_DETAIL) {
+				Tcl_Obj *headObj = Tcl_NewListObj(0, NULL);
+				DNSFormatRRHeader(interp, resflags, headObj,
+						rr.name, rr.type, rr.class, rr.ttl, rr.rdlength);
+				Tcl_ListObjAppendElement(interp, headObj, dataObj);
+				Tcl_ListObjAppendElement(interp, sectObj, headObj);
+			} else {
+				Tcl_ListObjAppendElement(interp, sectObj, dataObj);
+			}
+		} else {
+			dns_msg_adv(mh, rr.rdlength);
+		}
+	}
+
+	return TCL_OK;
+}
+
 int
 DNSParseMessage (
 	Tcl_Interp *interp,
@@ -927,121 +987,22 @@ DNSParseMessage (
 		}
 	}
 
-	if (resflags & RES_ANSWER) {
-		if (resflags & RES_SECTNAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("answer", -1));
-		}
-		if (resflags & RES_WANTLIST) {
-			sectObj = Tcl_NewListObj(0, NULL);
-			Tcl_ListObjAppendElement(interp, resObj, sectObj);
-		} else {
-			sectObj = resObj;
-		}
-	}
-	for (i = 0; i < handle.hdr.ANCOUNT; ++i) {
-		dns_msg_rr rr;
-
-		if (DNSMsgParseRRHeader(interp, &handle, &rr) != TCL_OK) {
-			Tcl_DecrRefCount(resObj);
-			return TCL_ERROR;
-		}
-
-		if (resflags & RES_ANSWER) {
-			Tcl_Obj *rrObj, *dataObj;
-			rrObj = Tcl_NewListObj(0, NULL);
-			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
-			if (resflags & RES_DETAIL) {
-				DNSFormatRRHeader(interp, resflags, resObj,
-						rr.name, rr.type, rr.class, rr.ttl, rr.rdlength);
-			}
-			if (DNSMsgParseRRData(interp, &handle, rr.type, rr.rdlength,
-						resflags, &dataObj) != TCL_OK) {
-				Tcl_DecrRefCount(resObj);
-				return TCL_ERROR;
-			}
-			Tcl_ListObjAppendElement(interp, rrObj, dataObj);
-		} else {
-			dns_msg_adv(&handle, rr.rdlength);
-		}
+	if (DNSMsgParseRRSection(interp, "answer", (resflags & RES_ANSWER),
+				handle.hdr.ANCOUNT, &handle, resflags, resObj) != TCL_OK) {
+		Tcl_DecrRefCount(resObj);
+		return TCL_ERROR;
 	}
 
-	if (resflags & RES_AUTH) {
-		if (resflags & RES_SECTNAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("authority", -1));
-		}
-		if (resflags & RES_WANTLIST) {
-			sectObj = Tcl_NewListObj(0, NULL);
-			Tcl_ListObjAppendElement(interp, resObj, sectObj);
-		} else {
-			sectObj = resObj;
-		}
-	}
-	for (i = 0; i < handle.hdr.NSCOUNT; ++i) {
-		dns_msg_rr rr;
-
-		if (DNSMsgParseRRHeader(interp, &handle, &rr) != TCL_OK) {
-			Tcl_DecrRefCount(resObj);
-			return TCL_ERROR;
-		}
-
-		if (resflags & RES_AUTH) {
-			Tcl_Obj *rrObj, *dataObj;
-			rrObj = Tcl_NewListObj(0, NULL);
-			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
-			if (resflags & RES_DETAIL) {
-				DNSFormatRRHeader(interp, resflags, resObj,
-						rr.name, rr.type, rr.class, rr.ttl, rr.rdlength);
-			}
-			if (DNSMsgParseRRData(interp, &handle, rr.type, rr.rdlength,
-						resflags, &dataObj) != TCL_OK) {
-				Tcl_DecrRefCount(resObj);
-				return TCL_ERROR;
-			}
-			Tcl_ListObjAppendElement(interp, rrObj, dataObj);
-		} else {
-			dns_msg_adv(&handle, rr.rdlength);
-		}
+	if (DNSMsgParseRRSection(interp, "authority", (resflags & RES_AUTH),
+				handle.hdr.NSCOUNT, &handle, resflags, resObj) != TCL_OK) {
+		Tcl_DecrRefCount(resObj);
+		return TCL_ERROR;
 	}
 
-	if (resflags & RES_ADD) {
-		if (resflags & RES_SECTNAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("additional", -1));
-		}
-		if (resflags & RES_WANTLIST) {
-			sectObj = Tcl_NewListObj(0, NULL);
-			Tcl_ListObjAppendElement(interp, resObj, sectObj);
-		} else {
-			sectObj = resObj;
-		}
-	}
-	for (i = 0; i < handle.hdr.ARCOUNT; ++i) {
-		dns_msg_rr rr;
-
-		if (DNSMsgParseRRHeader(interp, &handle, &rr) != TCL_OK) {
-			Tcl_DecrRefCount(resObj);
-			return TCL_ERROR;
-		}
-
-		if (resflags & RES_ADD) {
-			Tcl_Obj *rrObj, *dataObj;
-			rrObj = Tcl_NewListObj(0, NULL);
-			Tcl_ListObjAppendElement(interp, sectObj, rrObj);
-			if (resflags & RES_DETAIL) {
-				DNSFormatRRHeader(interp, resflags, resObj,
-						rr.name, rr.type, rr.class, rr.ttl, rr.rdlength);
-			}
-			if (DNSMsgParseRRData(interp, &handle, rr.type, rr.rdlength,
-						resflags, &dataObj) != TCL_OK) {
-				Tcl_DecrRefCount(resObj);
-				return TCL_ERROR;
-			}
-			Tcl_ListObjAppendElement(interp, rrObj, dataObj);
-		} else {
-			dns_msg_adv(&handle, rr.rdlength);
-		}
+	if (DNSMsgParseRRSection(interp, "additional", (resflags & RES_ADD),
+				handle.hdr.ARCOUNT, &handle, resflags, resObj) != TCL_OK) {
+		Tcl_DecrRefCount(resObj);
+		return TCL_ERROR;
 	}
 
 	Tcl_SetObjResult(interp, resObj);
