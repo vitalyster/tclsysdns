@@ -13,6 +13,9 @@
 #include "tclsysdns.h"
 #include "resfmt.h"
 
+/* Default resolver options */
+#define RES_DEFOPTS (DNS_QUERY_STANDARD | DNS_QUERY_DONT_RESET_TTL_VALUES)
+
 /* Code taken from win/tkWinTest.c of Tk
  *----------------------------------------------------------------------
  *
@@ -97,8 +100,37 @@ AppendSystemError(
 	}
 }
 
+typedef struct {
+	DWORD res_opts;
+} InterpData;
+
+int
+Impl_Init (
+	Tcl_Interp *interp,
+	ClientData *clientDataPtr
+	)
+{
+	InterpData *interpData;
+
+	interpData = (InterpData *) ckalloc(sizeof(InterpData));
+	interpData->res_opts = RES_DEFOPTS;
+
+	*clientDataPtr = (ClientData) interpData;
+
+	return TCL_OK;
+}
+
+void
+Impl_Cleanup (
+	ClientData clientData
+	)
+{
+	ckfree((char *) clientData);
+}
+
 int
 Impl_GetNameservers (
+	ClientData clientData,
 	Tcl_Interp *interp)
 {
 	DWORD res;
@@ -351,6 +383,7 @@ DNSParseRRSection (
 
 int
 Impl_Resolve (
+	ClientData clientData,
 	Tcl_Interp *interp,
 	Tcl_Obj *queryObj,
 	const unsigned short qclass,
@@ -358,15 +391,18 @@ Impl_Resolve (
 	const unsigned int resflags
 	)
 {
+	InterpData *interpData;
 	DNS_STATUS res;
 	PDNS_RECORD recPtr, sectPtr;
 	Tcl_Obj *questObj, *answObj, *authObj, *addObj;
 	Tcl_Obj *resObj;
 
+	interpData = (InterpData *) clientData;
+
 	res = DnsQuery_UTF8(
 		Tcl_GetStringFromObj(queryObj, NULL),
 		qtype,
-		DNS_QUERY_STANDARD | DNS_QUERY_DONT_RESET_TTL_VALUES,
+		interpData->res_opts,
 		NULL,
 		&recPtr,
 		NULL
@@ -480,6 +516,21 @@ Impl_Resolve (
 	} while (0);
 
 	Tcl_SetObjResult(interp, resObj);
+	return TCL_OK;
+}
+
+int
+Impl_Reinit (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int flags
+	)
+{
+	if (flags & REINIT_RESETOPTS) {
+		InterpData *interpData = (InterpData *) clientData;
+		interpData->res_opts = RES_DEFOPTS;
+	}
+
 	return TCL_OK;
 }
 

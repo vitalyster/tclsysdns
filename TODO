@@ -8,35 +8,28 @@ HIGH:
   This type could be fully speficied in the respective
   implementations.
 
-* (resolve) Unneeded nested lists in result record set if
-  just one section (-answer) is requested and each RR in
-  a section is formatted as a list (e.g., MX or SRV) types.
+* Ensure that (resolver) follows this output format rule:
+  % ::sysdns::resolve jabber.ru -type mx -all
+  {} {{10 mx.jabber.ru}} {} {213.219.244.136 84.204.76.126}
+  i.e. lists any missing entries as empty lists if -all
+  is given.
 
-* In resolver part, should probably do an early checks to skip
-  parsing of RRs if none of them is needed for result set.
+* In resolver part, we should probably do an early checks to
+  skip parsing of RRs if none of them is needed for result set.
 
 * Bring the list of DNS RR types in sync with
   http://www.iana.org/assignments/dns-parameters
   (seems like VC defines several types that are unusable
   in queries and thus should be avoided).
 
-* Implement per-interp data storage for win32, store a
-  DNS query options there.
-
 * Implement [configure] method.
 
 * Implement "-raw" format option for [resolve]. This implies
   checking for the OS version on Windows (which should
   probably be done once at startup and cached).
-
-* Implement [refresh] or [reinit] method. It should re-init
-  the resolver (for example, by re-reading its config file.
-  On all systems on which such an action has no sense
-  (like on Windows) this should be a silent no-op.
-  Also it may have an option named "-resetoptions" (or
-  something like this) which, if present, should request
-  re-initialization of the resolver options configured
-  via [configure] command.
+  Notice that both input and output might conceptually be "raw",
+  so, probably, something like "-rawquery" and "-rawresult"
+  is approptiate.
 
 * Investigate why one additional bogus (?) IP is returned
   for the "A" RR for the "www.gnu.org" query on Win32.
