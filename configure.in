@@ -99,7 +99,7 @@ TEA_ADD_TCL_SOURCES([])
 if test "${TEA_PLATFORM}" = "windows" ; then
     AC_DEFINE(BUILD_sysdns, 1, [Build windows export dll])
     CLEANFILES="$CLEANFILES *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
-    #TEA_ADD_SOURCES([win/winFile.c])
+    TEA_ADD_SOURCES([win/windns.c])
     #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
 else
 	:
@@ -107,31 +107,38 @@ fi
 AC_SUBST(CLEANFILES)
 
 #--------------------------------------------------------------------
-# Selection of the facility for performing DNS RR resolution requests.
-# resolver and lwres are supported, resolver is the default.
+# Selection of the backend for performing DNS resolution requests.
+# resolv and lwres are supported, resolv is the default.
 #--------------------------------------------------------------------
 if test "${TEA_PLATFORM}" = "unix" ; then
-	AC_MSG_CHECKING([what facility to use for DNS RR resolution])
-	AC_ARG_ENABLE(lwres,
-		AC_HELP_STRING([--enable-lwres],
-			[use lwres for DNS resolution (default: no)]),
-			[use_lwres=$enableval], [use_lwres=no])
+	AC_MSG_CHECKING([what backend to use for DNS resolution])
+	AC_ARG_WITH(backend,
+		AC_HELP_STRING([--with-backend],
+			[backend to use for DNS resolution (resolv (default), lwres)]),
+		backend=${withval},
+		backend=resolv)
 
-	if test "$use_lwres+set" = "set"; then
-		use_lwres=no
-	fi
-
-	if test "$use_lwres" = "yes" ; then
-		AC_MSG_RESULT([lwres])
-		#AC_DEFINE(USE_LWRES, 1, [Use lwres for DNS resolution])
-		TEA_ADD_SOURCES([unix/lwres.c])
-		TEA_ADD_LIBS([-llwres])
-	else
-		AC_MSG_RESULT([resolv])
-		AC_DEFINE(USE_LWRES, 0)
-		TEA_ADD_SOURCES([unix/resolv.c unix/dnsmsg.c])
-		TEA_ADD_LIBS([-lresolv])
-	fi
+	case $backend in
+		resolv)
+			AC_MSG_RESULT([resolv])
+			AC_DEFINE(USE_LWRES, 0)
+			TEA_ADD_SOURCES([unix/resolv.c unix/dnsmsg.c])
+			TEA_ADD_LIBS([-lresolv])
+		;;
+		lwres)
+			AC_MSG_RESULT([lwres])
+			AC_CHECK_HEADER(lwres/netdb.h, ,
+				AC_MSG_WARN([Probably lwres library header files are missing]))
+			AC_CHECK_LIB(lwres, lwres_getrrsetbyname, ,
+				AC_MSG_WARN([Probably lwres library is not available]))
+			#AC_DEFINE(USE_LWRES, 1, [Use lwres for DNS resolution])
+			TEA_ADD_SOURCES([unix/lwres.c])
+			TEA_ADD_LIBS([-llwres])
+		;;
+		*)
+			AC_MSG_ERROR([Invalid DNS resolution backend: $with_backend])
+		;;
+	esac	
 fi
 
 #--------------------------------------------------------------------
