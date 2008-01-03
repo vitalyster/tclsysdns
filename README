@@ -1,0 +1,35 @@
+$Id$
+
+
+ABOUT
+
+The "sysdns" package aims at providing cross-platform support
+for advanced DNS querying using the system facilities for DNS
+querying.
+
+Thus, while it essentially duplicates the functionality already
+provided by the "dns" package (available in Tcllib), it takes a
+different approach to implementation.
+
+
+BUILDING
+
+Refer to the INSTALL file for the list of supported platforms
+and for detailed instructions regarding the building of this
+package on different platforms.
+
+
+DOCUMENTATION
+
+This file presents just a brief description of the package.
+Full documentation is maintained in the "doc" subdirectory and
+is provided in HTML and NROFF formats.
+
+
+AUTHORS
+
+This package is written and maintained by
+Konstantin Khomoutov <flatworm@users.sourceforge.net>.
+
+
+# vim:noet:tw=64
