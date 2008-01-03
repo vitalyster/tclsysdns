@@ -13,6 +13,35 @@
 #include "tclsysdns.h"
 #include "resfmt.h"
 
+/* MinGW compatibility section.
+ * Defined listed below are missing in WinDNS.h
+ * from the "win32api" MinGW package of version 3.11
+ */
+#if ! defined _MSC_VER
+
+#ifndef DNS_TYPE_WINS
+#define DNS_TYPE_WINS 0xFF01
+#endif
+
+#ifndef DNS_TYPE_WINSR
+#define DNS_TYPE_WINSR 0xFF02
+#endif
+
+#ifndef DNS_TYPE_NBSTAT
+#define DNS_TYPE_NBSTAT (DNS_TYPE_WINS)
+#endif
+
+#ifndef DNS_CLASS_INTERNET
+#define DNS_CLASS_INTERNET 0x0001
+#endif
+
+#ifndef DNS_WKS_RECORD_LENGTH
+#define DNS_WKS_RECORD_LENGTH(ByteCount) \
+	(sizeof(DNS_WKS_DATA) + (ByteCount-1))
+#endif
+
+#endif /* #if ! defined _MSC_VER */
+
 /* Default resolver options */
 #define RES_DEFOPTS (DNS_QUERY_STANDARD | DNS_QUERY_DONT_RESET_TTL_VALUES)
 
@@ -168,17 +197,25 @@ Impl_GetNameservers (
 	return TCL_OK;
 }
 
-static IP6_ADDRESS
+static const unsigned short *
 NormalizeWinIP6Addr (
 	const IP6_ADDRESS addr
 	)
 {
 	int i;
-	IP6_ADDRESS out;
+	static unsigned short out[8];
 
+#if 0
 	for (i = 0; i < 8; ++i) {
 		out.IP6Word[i] = htons(addr.IP6Word[i]);
 	}
+#else
+	for (i = 0; i < 4; ++i) {
+		DWORD chunk = addr.IP6Dword[i];
+		out[i * 2]     = htons(LOWORD(chunk));
+		out[i * 2 + 1] = htons(HIWORD(chunk));
+	}
+#endif
 
 	return out;
 }
@@ -263,7 +300,7 @@ DNSParseRRData (
 			break;
 		case DNS_TYPE_AAAA:
 			DNSFormatRRDataAAAA(interp, resflags, resObjPtr,
-					NormalizeWinIP6Addr(rr->Data.AAAA.Ip6Address).IP6Word);
+					NormalizeWinIP6Addr(rr->Data.AAAA.Ip6Address));
 			break;
 		case DNS_TYPE_SIG:
 			DNSFormatRRDataSIG(interp, resflags, resObjPtr,
@@ -417,6 +454,8 @@ Impl_Resolve (
 		return TCL_ERROR;
 	}
 
+	questObj = answObj = authObj = addObj = NULL;
+
 	if (resflags & RES_QUESTION) {
 		questObj = Tcl_NewListObj(0, NULL);
 	}
@@ -457,7 +496,7 @@ Impl_Resolve (
 		sectPtr = sectPtr->pNext;
 	}
 
-	DnsFree(recPtr, DnsFreeRecordList);
+	DnsRecordListFree(recPtr, DnsFreeRecordList);
 
 	/* Assembly of the result set */
 	resObj = Tcl_NewListObj(0, NULL);

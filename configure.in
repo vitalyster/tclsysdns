@@ -100,7 +100,23 @@ if test "${TEA_PLATFORM}" = "windows" ; then
     AC_DEFINE(BUILD_sysdns, 1, [Build windows export dll])
     CLEANFILES="$CLEANFILES *.lib *.dll *.exp *.ilk *.pdb vc*.pch"
     TEA_ADD_SOURCES([win/windns.c])
+	TEA_ADD_LIBS([-lwsock32 -liphlpapi -ldnsapi])
     #TEA_ADD_INCLUDES([-I\"$(${CYGPATH} ${srcdir}/win)\"])
+	AC_CHECK_HEADER(windows.h, ,
+		AC_MSG_WARN([Probably win32api MinGW package is missing]))
+	AC_CHECK_HEADER(winsock.h, ,
+		AC_MSG_WARN([Probably win32api MinGW package is missing]),
+		[[ #include <windows.h> ]])
+	AC_CHECK_HEADER(iphlpapi.h, ,
+		AC_MSG_WARN([Probably win32api MinGW package is missing]),
+		[[ #include <windows.h> ]])
+	AC_CHECK_HEADER(windns.h, ,
+		AC_MSG_WARN([Probably win32api MinGW package is missing]),
+		[[ #include <windows.h> ]])
+	AC_CHECK_LIB(wsock32, htons, ,
+		AC_MSG_WARN([Probably wsock32 import library isn't available (win32api MinGW package isn't installed?)]))
+	AC_CHECK_LIB(iphlpapi, GetNetworkParams, ,
+		AC_MSG_WARN([Probably wsock32 import library isn't available (win32api MinGW package isn't installed?)]))
 else
 	:
 fi

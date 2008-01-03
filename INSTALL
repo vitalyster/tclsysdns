@@ -1,0 +1,105 @@
+$Id$
+
+
+SUPPORTED PLATFORMS
+
+This package is known to build on
+
+* Linux (Debian Etch, i386).
+* Win32:
+  * MinGW 5.1.3.
+  * Microsoft Visual C (VC6 and VC8).
+
+
+BUILDING ON UNIX PLATFORMS
+
+On Unix platforms sysnds uses DNS resolution "backends" which
+can work with various DNS resolution libraries.
+Currently the support is provided for:
+* resolv -- the de-facto resolver on most Unix systems (derived
+  from BIND).
+* lwresd -- "Lightweight Resolver Daemon" -- another project
+  from the BIND team.
+
+To build sysdns on Unix follow these steps:
+
+1) Make sure you have "development" package for Tcl (on Linux
+systems it usually have a name like tclX.Y-dev) or a
+preconfigured Tcl source tree (i.e. an unwrapped source tarball
+in which configure script was run successfully).
+
+2) Make sure you have "development" package for the DNS
+resolution backend you intend to use.
+
+2) Run configure script. Most certainly you will need to specify
+the path to your Tcl configuration (tclCondig.sh file); for this
+use --with-tcl=... command-line parameter to configure.
+
+By default sysdns uses the "resolv" DNS resolution backend; if
+you intend to use another, specify --with-backend=... command
+line parameter to configure. Valid values for this switch
+currently are: "resolv" and "lwresd".
+
+When configure runs it checks for presence of necessary header
+files and libraries for the chosen backend. Pay attention to any
+warnings regarding missing stuff -- this may signalize you still
+have no "development" packages for your backend installed,
+broken setup or something like this.
+
+3) If configure worked OK, run "make" to build the package.
+
+4) You can run "make test" to test the package before installing
+it. Observe, that for tests to work properly you need to have:
+* Working network connectivity (since the tests will perform
+  live DNS queries).
+* Working backend which was configured for sysdns to use (for
+  example, for lwresd backend you need lwresd daemon started and
+  properly configured.
+
+5) Install the package using "make install".
+
+NOTE that "make uninstall" target isn't supported, so if you're
+concerned about possible issues with future package removal, use
+appropriate tools like stow and checkinstall to install the
+package.
+
+
+BUILDING USING MICROSOFT VISUAL C
+
+1) Make sure you have appropriate (parts of) Platform SDK
+installed, plain C compiler (like Microsoft Visual Studio
+Express editions) won't work since several system headers and
+import libraries will be missing.
+
+2) Make sure you have the C compiler and other necessary tools
+listed in the PATH. If you have MSVS installed in the system
+this may be already the case; if not, look for a batch file
+called something like vcvarsall.bat in the directory tree of
+MSVS.
+
+While in the console, you can check your setup by running
+"cl.exe" without parameters.
+
+3) Get to the shell (start cmd.exe) and change dir to the "win"
+subdirectory of the root folder of the sysdns source tree.
+
+4) Run nmake to build the project like this:
+nmake -f Makefile.vc all TCLDIR=C:\Tcl
+
+Notice the TCLDIR macro listed on the command line: it is
+required and must point either to the root folder of an installed
+Tcl runtime or to a properly configured Tcl source tree.
+NOTE that C:\Tcl is just an example.
+
+5) After building the package you can test it using:
+nmake -f Makefile.vc test TCLDIR=C:\Tcl
+
+Make sure you have active network connection with properly
+configured DNS servers for it since the test scripts will
+perform live DNS queries.
+
+6) Install the package using
+nmake -f Makefile.vc install TCLDIR=C:\Tcl
+
+
+# vim:noet:tw=64

@@ -2,12 +2,6 @@ $Id$
 
 HIGH:
 
-* Think of defining an "incomplete type" for the "interp
-  data" concept in tclsysdns.h + change the definition
-  of corresponding formal parameters to the Impl_* procs.
-  This type could be fully speficied in the respective
-  implementations.
-
 * Ensure that (resolver) follows this output format rule:
   % ::sysdns::resolve jabber.ru -type mx -all
   {} {{10 mx.jabber.ru}} {} {213.219.244.136 84.204.76.126}
@@ -36,7 +30,9 @@ HIGH:
 
 NORMAL:
 
-* Bring MinGW support in sync.
+* In TODO: verify the case of TCLDIR macro pointing to a
+  Tcl source tree. Write about building with MinGW.
+  Warn about implications of building with VC > 6.0.
 
 * Bring lwres part in sync.
 
@@ -46,11 +42,15 @@ NORMAL:
 * Extensively comment unix/dnsmsg.c when it's stabilized.
   Explicitly mark mutator functions as being such.
 
-* Result set "templating" seems impossible due to this error:
-  "Tcl_ListObjAppendElement called with shared object"
-  which occurs if we append a shared Tcl_Obj to a list.
+* Investigate why AC_CHECK_LIB doesn't work with MinGW.
 
 LOW:
+
+* Think of defining an "incomplete type" for the "interp
+  data" concept in tclsysdns.h + change the definition
+  of corresponding formal parameters to the Impl_* procs.
+  This type could be fully speficied in the respective
+  implementations.
 
 * Provide script-level command which will call res_init()
   to re-read /etc/resolv.conf, etc.
