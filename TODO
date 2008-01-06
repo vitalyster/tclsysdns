@@ -2,14 +2,15 @@ $Id$
 
 HIGH:
 
-* Ensure that (resolver) follows this output format rule:
-  % ::sysdns::resolve jabber.ru -type mx -all
-  {} {{10 mx.jabber.ru}} {} {213.219.244.136 84.204.76.126}
-  i.e. lists any missing entries as empty lists if -all
-  is given.
+* (lwres) provide for creation of (bogus (for question) or empty
+  members of result set to comply to the script-level interface
+  of [::sysdns::resolve].
 
-* In resolver part, we should probably do an early checks to
-  skip parsing of RRs if none of them is needed for result set.
+* Factor out some DNS message parsing bits from unix/dnsmsg.c
+  and unix/lwres.c (namely, generation of POSIX errors, parsing
+  of IP addresses, some constants).
+
+* Write test suite.
 
 * Bring the list of DNS RR types in sync with
   http://www.iana.org/assignments/dns-parameters
@@ -25,16 +26,23 @@ HIGH:
   so, probably, something like "-rawquery" and "-rawresult"
   is approptiate.
 
-* Investigate why one additional bogus (?) IP is returned
-  for the "A" RR for the "www.gnu.org" query on Win32.
-
 NORMAL:
 
 * In TODO: verify the case of TCLDIR macro pointing to a
   Tcl source tree. Write about building with MinGW.
   Warn about implications of building with VC > 6.0.
 
-* Bring lwres part in sync.
+* Ensure that (resolver) follows this output format rule:
+  % ::sysdns::resolve jabber.ru -type mx -all
+  {} {{10 mx.jabber.ru}} {} {213.219.244.136 84.204.76.126}
+  i.e. lists any missing entries as empty lists if -all
+  is given.
+
+* Investigate why one additional bogus (?) IP is returned
+  for the "A" RR for the "www.gnu.org" query on Win32.
+
+* In resolver part, we should probably do an early checks to
+  skip parsing of RRs if none of them is needed for result set.
 
 * (dnsmsg.c): boundary checking while parsing RRDATA sections
   should probably take the rdlength parameter into account.
