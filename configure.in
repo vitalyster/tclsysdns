@@ -124,22 +124,22 @@ AC_SUBST(CLEANFILES)
 
 #--------------------------------------------------------------------
 # Selection of the backend for performing DNS resolution requests.
-# resolv and lwres are supported, resolv is the default.
+# resolv, lwres and adns are supported, resolv is the default.
 #--------------------------------------------------------------------
 if test "${TEA_PLATFORM}" = "unix" ; then
 	AC_MSG_CHECKING([what backend to use for DNS resolution])
 	AC_ARG_WITH(backend,
 		AC_HELP_STRING([--with-backend],
-			[backend to use for DNS resolution (resolv (default), lwres)]),
+			[backend to use for DNS resolution (resolv, lwres, adns; default: resolv)]),
 		backend=${withval},
 		backend=resolv)
 
 	case $backend in
 		resolv)
 			AC_MSG_RESULT([resolv])
-			AC_DEFINE(USE_LWRES, 0)
 			TEA_ADD_SOURCES([unix/resolv.c unix/dnsmsg.c])
 			TEA_ADD_LIBS([-lresolv])
+			#AC_DEFINE(USE_LWRES, 0)
 		;;
 		lwres)
 			AC_MSG_RESULT([lwres])
@@ -147,9 +147,17 @@ if test "${TEA_PLATFORM}" = "unix" ; then
 				AC_MSG_WARN([Probably lwres library header files are missing]))
 			AC_CHECK_LIB(lwres, lwres_getrrsetbyname, ,
 				AC_MSG_WARN([Probably lwres library is not available]))
-			#AC_DEFINE(USE_LWRES, 1, [Use lwres for DNS resolution])
 			TEA_ADD_SOURCES([unix/lwres.c])
 			TEA_ADD_LIBS([-llwres])
+		;;
+		adns)
+			AC_MSG_RESULT([adns])
+			AC_CHECK_HEADER(adns.h, ,
+				AC_MSG_WARN([Probably adns library header files are missing]))
+			AC_CHECK_LIB(adns, adns_synchronous, ,
+				AC_MSG_WARN([Probably adns library is not available]))
+			TEA_ADD_SOURCES([unix/adns.c])
+			TEA_ADD_LIBS([-ladns])
 		;;
 		*)
 			AC_MSG_ERROR([Invalid DNS resolution backend: $with_backend])

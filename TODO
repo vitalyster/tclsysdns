@@ -2,6 +2,10 @@ $Id$
 
 HIGH:
 
+* (adns) deal with parsing of several RRs from adns_answer.
+
+* (adns) convert "expires" abs time back to TTL.
+
 * (lwres) provide for creation of (bogus (for question) or empty
   members of result set to comply to the script-level interface
   of [::sysdns::resolve].
@@ -9,6 +13,10 @@ HIGH:
 * Factor out some DNS message parsing bits from unix/dnsmsg.c
   and unix/lwres.c (namely, generation of POSIX errors, parsing
   of IP addresses, some constants).
+
+* (adns) Factor out some bits of error code / result settings.
+  Probably this should be generalized to the whole DNS
+  subsystem.
 
 * Write test suite.
 

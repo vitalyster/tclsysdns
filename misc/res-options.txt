@@ -1,0 +1,16 @@
+$Id$
+
+resolver:
+
+* Use TCP (RES_USEVC) / -tcponly.
+
+* Query primary NS only (RES_PRIMARY) / -useonlyprimaryns.
+
+* Request server recursion (RES_RECURSE) / -recursion.
+
+* Append def. domain name (RES_DEFNAMES) / -appenddefaultdomain.
+
+* Keep connection alive, when doing TCP (RES_STAYOPEN) / -keeptcpopen
+
+* Search in parent domains also (RES_DNSRCH) / -searchparentdomains
+
