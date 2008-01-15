@@ -116,13 +116,10 @@ DNSParseRRDataA (
 	Tcl_Obj **resObjPtr
 	)
 {
-	adns_rr_addr *rrPtr;
-	unsigned long addr;
+	struct in_addr in = answ->rrs.inaddr[rrindex];
 
-	rrPtr = ((adns_rr_addr *) answ->rrs)[rrindex];
-	addr = rrPtr->addr.inet.sin_addr.s_addr;
+	DNSFormatRRDataA(interp, resflags, resObjPtr, in.s_addr);
 
-	DNSFormatRRDataA(interp, resflags, resObjPtr, addr);
 	return TCL_OK;
 }
 

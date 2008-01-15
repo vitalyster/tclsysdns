@@ -2,8 +2,6 @@ $Id$
 
 HIGH:
 
-* (adns) deal with parsing of several RRs from adns_answer.
-
 * (adns) convert "expires" abs time back to TTL.
 
 * (lwres) provide for creation of (bogus (for question) or empty
@@ -17,6 +15,15 @@ HIGH:
 * (adns) Factor out some bits of error code / result settings.
   Probably this should be generalized to the whole DNS
   subsystem.
+
+* (adns) Implement support for remaining RR types.
+
+* (adns) think of dropping the support for "cooked" answers and
+  opt for processing of raw messages via unix/dnsmsg.c.
+  One pitfall is the requirement to implement dh_expand
+  in the library code since a) we shouldn't depend on libresolv
+  on Unix when using ADNS; b) ADNS works on Win32 where
+  libresolv is not (easily) available.
 
 * Write test suite.
 
