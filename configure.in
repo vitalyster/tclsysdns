@@ -140,6 +140,7 @@ if test "${TEA_PLATFORM}" = "unix" ; then
 			TEA_ADD_SOURCES([unix/resolv.c unix/dnsmsg.c])
 			TEA_ADD_LIBS([-lresolv])
 			#AC_DEFINE(USE_LWRES, 0)
+			AC_DEFINE(HAS_DN_EXPAND, 1)
 		;;
 		lwres)
 			AC_MSG_RESULT([lwres])
@@ -147,7 +148,7 @@ if test "${TEA_PLATFORM}" = "unix" ; then
 				AC_MSG_WARN([Probably lwres library header files are missing]))
 			AC_CHECK_LIB(lwres, lwres_getrrsetbyname, ,
 				AC_MSG_WARN([Probably lwres library is not available]))
-			TEA_ADD_SOURCES([unix/lwres.c])
+			TEA_ADD_SOURCES([unix/lwres.c unix/dn_expand.c])
 			TEA_ADD_LIBS([-llwres])
 		;;
 		adns)
@@ -156,7 +157,7 @@ if test "${TEA_PLATFORM}" = "unix" ; then
 				AC_MSG_WARN([Probably adns library header files are missing]))
 			AC_CHECK_LIB(adns, adns_synchronous, ,
 				AC_MSG_WARN([Probably adns library is not available]))
-			TEA_ADD_SOURCES([unix/adns.c])
+			TEA_ADD_SOURCES([unix/adns.c unix/dn_expand.c])
 			TEA_ADD_LIBS([-ladns])
 		;;
 		*)

@@ -2,11 +2,11 @@ $Id$
 
 HIGH:
 
-* (adns) convert "expires" abs time back to TTL.
-
 * (lwres) provide for creation of (bogus (for question) or empty
   members of result set to comply to the script-level interface
   of [::sysdns::resolve].
+  Same for ADNS (if there's really no way to get full raw
+  messages from it).
 
 * Factor out some DNS message parsing bits from unix/dnsmsg.c
   and unix/lwres.c (namely, generation of POSIX errors, parsing
@@ -20,10 +20,13 @@ HIGH:
 
 * (adns) think of dropping the support for "cooked" answers and
   opt for processing of raw messages via unix/dnsmsg.c.
-  One pitfall is the requirement to implement dh_expand
-  in the library code since a) we shouldn't depend on libresolv
-  on Unix when using ADNS; b) ADNS works on Win32 where
-  libresolv is not (easily) available.
+  Unfortunately, it seems that it's impossible to get really
+  "raw" message from ADNS, so a) only the RRs in the answer
+  section are available; b) section header is pre-parsed, and
+  only a pointer to RDATA field is returned, so to implement
+  parsing of such messages, dnsmsg.c should provide external
+  function for parsing RDATA, and to call it, some state should
+  be properly cooked.
 
 * Write test suite.
 

@@ -8,10 +8,14 @@
 #include <tcl.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <arpa/nameser.h>
-#include <resolv.h>
 #include <errno.h>
 #include <stdio.h>
+#ifdef HAS_DN_EXPAND
+#include <arpa/nameser.h>
+#include <resolv.h>
+#else
+#include "dn_expand.h"
+#endif
 #include "tclsysdns.h"
 #include "dnsparams.h"
 #include "resfmt.h"

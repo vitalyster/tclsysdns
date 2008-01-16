@@ -10,6 +10,7 @@
 #include <adns.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <time.h>
 #include "tclsysdns.h"
 #include "dnsparams.h"
 #include "resfmt.h"
@@ -209,7 +210,12 @@ DNSParseRRSet (
 	Tcl_Obj *resObj
 	)
 {
+	time_t now;
+	unsigned long ttl;
 	int i;
+
+	time(&now);
+	ttl = answ->expires - now;
 
 	for (i = 0; i < answ->nrrs; ++i) {
 		Tcl_Obj *dataObj;
@@ -224,9 +230,9 @@ DNSParseRRSet (
 			DNSFormatRRHeader(interp, resflags, sectObj,
 					answ->owner,
 					answ->type,
-					2, /* IN */
-					0, /* TODO convert "expires" abs time back to TTL */
-					answ->rrsz); /* TODO what does this size field really mean? */
+					1, /* IN */
+					ttl,
+					answ->rrsz); /* that's rdlength */
 
 			Tcl_ListObjAppendElement(interp, sectObj, dataObj);
 			Tcl_ListObjAppendElement(interp, resObj, sectObj);

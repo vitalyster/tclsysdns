@@ -7252,6 +7252,10 @@ echo "$as_me: error: could not find source file '$i'" >&2;}
 
 
 			#AC_DEFINE(USE_LWRES, 0)
+			cat >>confdefs.h <<\_ACEOF
+#define HAS_DN_EXPAND 1
+_ACEOF
+
 		;;
 		lwres)
 			{ echo "$as_me:$LINENO: result: lwres" >&5
@@ -7464,7 +7468,7 @@ echo "$as_me: WARNING: Probably lwres library is not available" >&2;}
 fi
 
 
-    vars="unix/lwres.c"
+    vars="unix/lwres.c unix/dn_expand.c"
     for i in $vars; do
 	case $i in
 	    \$*)
@@ -7722,7 +7726,7 @@ echo "$as_me: WARNING: Probably adns library is not available" >&2;}
 fi
 
 
-    vars="unix/adns.c"
+    vars="unix/adns.c unix/dn_expand.c"
     for i in $vars; do
 	case $i in
 	    \$*)
