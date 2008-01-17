@@ -6,9 +6,10 @@
  */
 
 #include <tcl.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <resolv.h>
 #include <errno.h>
-#include <arpa/inet.h>
 #include "tclsysdns.h"
 #include "dnsparams.h"
 #include "dnsmsg.h"

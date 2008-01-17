@@ -2,6 +2,12 @@ $Id$
 
 HIGH:
 
+* (FreeBSD) two issues should be addressed (probably via autoconf):
+  * -lresolv isn't required (hardcoded to the libc);
+  * adns.h and libadns.a cannot be found because they're installed
+    under /usr/local which seems to be the default place for
+    "non essential" packages and software from ports.
+
 * (lwres) provide for creation of (bogus (for question) or empty
   members of result set to comply to the script-level interface
   of [::sysdns::resolve].
@@ -129,5 +135,8 @@ UNCERTAIN:
 
 * (Win32) DNS_RECORD lacks "class" field. We default to "IN"
   as of now.
+
+* (FreeBSD) lwresd seems not available for FreeBSD in either
+  of "pre-packaged" forms.
 
 # vim:tw=64:noet
