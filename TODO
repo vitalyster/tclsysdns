@@ -3,10 +3,13 @@ $Id$
 HIGH:
 
 * (FreeBSD) two issues should be addressed (probably via autoconf):
-  * -lresolv isn't required (hardcoded to the libc);
   * adns.h and libadns.a cannot be found because they're installed
     under /usr/local which seems to be the default place for
     "non essential" packages and software from ports.
+
+* (NetBSD) resolver fails to run under multi-threaded Tcl --
+  dumps core with "_res not supported on multi-...".
+  We have to investigate possible workarounds.
 
 * (lwres) provide for creation of (bogus (for question) or empty
   members of result set to comply to the script-level interface
