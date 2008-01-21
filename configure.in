@@ -139,8 +139,7 @@ if test "${TEA_PLATFORM}" = "unix" ; then
 			AC_MSG_RESULT([resolv])
 			TEA_ADD_SOURCES([unix/resolv.c unix/dnsmsg.c])
 			# BSD systems doesn't have libresolv:
-			AC_SEARCH_LIBS([res_query], [resolv],
-				[TEA_ADD_LIBS([-lresolv])])
+			AC_SEARCH_LIBS([res_query], [resolv])
 			#AC_DEFINE(USE_LWRES, 0)
 			AC_DEFINE(HAS_DN_EXPAND, 1)
 		;;
