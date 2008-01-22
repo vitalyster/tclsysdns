@@ -210,6 +210,9 @@ DNSParseRRSet (
 	Tcl_Obj *resObj
 	)
 {
+	const unsigned short qclass = 1; /* IN */
+	const int RES_WANTLIST = (RES_SECTNAMES | RES_MULTIPLE);
+
 	time_t now;
 	unsigned long ttl;
 	int i;
@@ -217,27 +220,76 @@ DNSParseRRSet (
 	time(&now);
 	ttl = answ->expires - now;
 
-	for (i = 0; i < answ->nrrs; ++i) {
-		Tcl_Obj *dataObj;
-
-		if (DNSParseRRData(interp, answ, i, resflags, &dataObj) != TCL_OK) {
-			return TCL_ERROR;
+	if (resflags & RES_QUESTION) {
+		Tcl_Obj *sectObj;
+		if (resflags & RES_SECTNAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("question", -1));
 		}
-
-		if (resflags & RES_DETAIL) {
-			Tcl_Obj *sectObj = Tcl_NewListObj(0, NULL);
-
-			DNSFormatRRHeader(interp, resflags, sectObj,
-					answ->owner,
-					answ->type,
-					1, /* IN */
-					ttl,
-					answ->rrsz); /* that's rdlength */
-
-			Tcl_ListObjAppendElement(interp, sectObj, dataObj);
+		if (resflags & RES_WANTLIST) {
+			sectObj = Tcl_NewListObj(0, NULL);
 			Tcl_ListObjAppendElement(interp, resObj, sectObj);
 		} else {
-			Tcl_ListObjAppendElement(interp, resObj, dataObj);
+			sectObj = resObj;
+		}
+		DNSFormatQuestion(interp, resflags, sectObj,
+				answ->owner, answ->type, qclass);
+	}
+
+	if (resflags & RES_ANSWER) {
+		Tcl_Obj *sectObj;
+		if (resflags & RES_SECTNAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("answer", -1));
+		}
+		if (resflags & RES_WANTLIST) {
+			sectObj = Tcl_NewListObj(0, NULL);
+			Tcl_ListObjAppendElement(interp, resObj, sectObj);
+		} else {
+			sectObj = resObj;
+		}
+		for (i = 0; i < answ->nrrs; ++i) {
+			Tcl_Obj *dataObj;
+
+			if (DNSParseRRData(interp, answ, i, resflags, &dataObj) != TCL_OK) {
+				return TCL_ERROR;
+			}
+
+			if (resflags & RES_DETAIL) {
+				Tcl_Obj *rrObj = Tcl_NewListObj(0, NULL);
+
+				DNSFormatRRHeader(interp, resflags, rrObj,
+						answ->owner,
+						answ->type,
+						qclass,
+						ttl,
+						answ->rrsz); /* that's rdlength */
+
+				Tcl_ListObjAppendElement(interp, rrObj, dataObj);
+				Tcl_ListObjAppendElement(interp, sectObj, rrObj);
+			} else {
+				Tcl_ListObjAppendElement(interp, sectObj, dataObj);
+			}
+		}
+	}
+
+	if (resflags & RES_AUTH) {
+		if (resflags & RES_SECTNAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("authority", -1));
+		}
+		if (resflags & RES_WANTLIST) {
+			Tcl_ListObjAppendElement(interp, resObj, Tcl_NewObj());
+		}
+	}
+
+	if (resflags & RES_ADD) {
+		if (resflags & RES_SECTNAMES) {
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj("additional", -1));
+		}
+		if (resflags & RES_WANTLIST) {
+			Tcl_ListObjAppendElement(interp, resObj, Tcl_NewObj());
 		}
 	}
 

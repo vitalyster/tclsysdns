@@ -2,14 +2,10 @@ $Id$
 
 HIGH:
 
-* (FreeBSD) two issues should be addressed (probably via autoconf):
-  * adns.h and libadns.a cannot be found because they're installed
-    under /usr/local which seems to be the default place for
-    "non essential" packages and software from ports.
+* (adns) Check whether ADNS sets errno on errors or just returns
+  its "would have been" value.
 
-* (NetBSD) resolver fails to run under multi-threaded Tcl --
-  dumps core with "_res not supported on multi-...".
-  We have to investigate possible workarounds.
+* (adns) Implement support for remaining RR types.
 
 * (lwres) provide for creation of (bogus (for question) or empty
   members of result set to comply to the script-level interface
@@ -25,8 +21,6 @@ HIGH:
   Probably this should be generalized to the whole DNS
   subsystem.
 
-* (adns) Implement support for remaining RR types.
-
 * (adns) think of dropping the support for "cooked" answers and
   opt for processing of raw messages via unix/dnsmsg.c.
   Unfortunately, it seems that it's impossible to get really
@@ -36,6 +30,15 @@ HIGH:
   parsing of such messages, dnsmsg.c should provide external
   function for parsing RDATA, and to call it, some state should
   be properly cooked.
+
+* (FreeBSD) two issues should be addressed (probably via autoconf):
+  * adns.h and libadns.a cannot be found because they're installed
+    under /usr/local which seems to be the default place for
+    "non essential" packages and software from ports.
+
+* (NetBSD) resolver fails to run under multi-threaded Tcl --
+  dumps core with "_res not supported on multi-...".
+  We have to investigate possible workarounds.
 
 * Write test suite.
 
@@ -78,6 +81,10 @@ NORMAL:
   Explicitly mark mutator functions as being such.
 
 * Investigate why AC_CHECK_LIB doesn't work with MinGW.
+
+* (adns) Look at exploiting ADNS capabilities of async
+  processing (implement -command oprtion for [::sysdns::resolve]
+  and provide an "event source").
 
 LOW:
 
