@@ -17,6 +17,15 @@ DNSFormatQuestion (
 	const unsigned short qclass);
 
 void
+DNSFormatFakeQuestion (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj *resObj,
+	const char name[],
+	const unsigned short qtype,
+	const unsigned short qclass);
+
+void
 DNSFormatRRHeader (
 	Tcl_Interp *interp,
 	const int resflags,

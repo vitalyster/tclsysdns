@@ -98,6 +98,33 @@ DNSFormatQuestion (
 }
 
 void
+DNSFormatFakeQuestion (
+	Tcl_Interp *interp,
+	const int resflags,
+	Tcl_Obj *resObj,
+	const char name[],
+	const unsigned short qtype,
+	const unsigned short qclass
+	)
+{
+	Tcl_Obj *sectObj, *questObj;
+	if (resflags & RES_SECTNAMES) {
+		Tcl_ListObjAppendElement(interp, resObj,
+				Tcl_NewStringObj("question", -1));
+	}
+	if (resflags & RES_WANTLIST) {
+		sectObj = Tcl_NewListObj(0, NULL);
+		Tcl_ListObjAppendElement(interp, resObj, sectObj);
+	} else {
+		sectObj = resObj;
+	}
+	questObj = Tcl_NewListObj(0, NULL);
+	Tcl_ListObjAppendElement(interp, sectObj, questObj);
+	DNSFormatQuestion(interp, resflags, questObj,
+			name, qtype, qclass);
+}
+
+void
 DNSFormatRRHeader (
 	Tcl_Interp *interp,
 	const int resflags,

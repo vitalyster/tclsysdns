@@ -502,14 +502,12 @@ Impl_Resolve (
 	resObj = Tcl_NewListObj(0, NULL);
 
 	do {
-		const int RES_WANTSLIST = (RES_SECTNAMES | RES_MULTIPLE);
-
 		if (resflags & RES_QUESTION) {
 			if (resflags & RES_SECTNAMES) {
 				Tcl_ListObjAppendElement(interp, resObj,
 						Tcl_NewStringObj("question", -1));
 			}
-			if (resflags & RES_WANTSLIST) {
+			if (resflags & RES_WANTLIST) {
 				Tcl_ListObjAppendElement(interp, resObj, questObj);
 			} else {
 				Tcl_ListObjAppendList(interp, resObj, questObj);
@@ -521,7 +519,7 @@ Impl_Resolve (
 				Tcl_ListObjAppendElement(interp, resObj,
 						Tcl_NewStringObj("answer", -1));
 			}
-			if (resflags & RES_WANTSLIST) {
+			if (resflags & RES_WANTLIST) {
 				Tcl_ListObjAppendElement(interp, resObj, answObj);
 			} else {
 				Tcl_ListObjAppendList(interp, resObj, answObj);
@@ -533,7 +531,7 @@ Impl_Resolve (
 				Tcl_ListObjAppendElement(interp, resObj,
 						Tcl_NewStringObj("authority", -1));
 			}
-			if (resflags & RES_WANTSLIST) {
+			if (resflags & RES_WANTLIST) {
 				Tcl_ListObjAppendElement(interp, resObj, authObj);
 			} else {
 				Tcl_ListObjAppendList(interp, resObj, authObj);
@@ -545,7 +543,7 @@ Impl_Resolve (
 				Tcl_ListObjAppendElement(interp, resObj,
 						Tcl_NewStringObj("additional", -1));
 			}
-			if (resflags & RES_WANTSLIST) {
+			if (resflags & RES_WANTLIST) {
 				Tcl_ListObjAppendElement(interp, resObj, addObj);
 			} else {
 				Tcl_ListObjAppendList(interp, resObj, addObj);

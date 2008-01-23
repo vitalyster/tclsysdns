@@ -892,7 +892,6 @@ DNSMsgParseRRSection (
 	Tcl_Obj *resObj
 	)
 {
-	const int RES_WANTLIST = (RES_SECTNAMES | RES_MULTIPLE);
 	Tcl_Obj *sectObj;
 	int i;
 

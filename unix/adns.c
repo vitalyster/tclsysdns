@@ -125,6 +125,140 @@ DNSParseRRDataA (
 }
 
 static int
+DNSParseRRDataSOA (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	DNSFormatRRDataSOA(interp, resflags, resObjPtr,
+			answ->rrs.soa[rrindex].mname,
+			answ->rrs.soa[rrindex].rname,
+			answ->rrs.soa[rrindex].serial,
+			answ->rrs.soa[rrindex].refresh,
+			answ->rrs.soa[rrindex].retry,
+			answ->rrs.soa[rrindex].expire,
+			answ->rrs.soa[rrindex].minimum);
+
+	return TCL_OK;
+}
+
+static int
+DNSParseRRDataPTR (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	DNSFormatRRDataPTR(interp, resflags, resObjPtr,
+			answ->rrs.str[rrindex]);
+
+	return TCL_OK;
+}
+
+static int
+DNSParseRRDataMINFO (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	DNSFormatRRDataMINFO(interp, resflags, resObjPtr,
+			answ->rrs.strpair[rrindex].array[0],
+			answ->rrs.strpair[rrindex].array[1]);
+
+	return TCL_OK;
+}
+
+static int
+DNSParseRRDataMX (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	DNSFormatRRDataMX(interp, resflags, resObjPtr,
+			answ->rrs.intstr[rrindex].i,
+			answ->rrs.intstr[rrindex].str);
+
+	return TCL_OK;
+}
+
+static int
+DNSParseRRDataHINFO (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	/*
+	DNSFormatRRDataTXT(interp, resflags, resObjPtr,
+			2, answ->rrs.intstrpair[rrindex].array);
+	*/
+
+	/* TODO fix this */
+	*resObjPtr = Tcl_NewStringObj("TODO", -1);
+
+	return TCL_OK;
+}
+
+static int
+DNSParseRRDataTXT (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	int ix;
+	Tcl_Obj *itemsObj;
+		
+	ix = 0;
+	itemsObj = Tcl_NewListObj(0, NULL);
+
+	while (1) {
+		const char *item = answ->rrs.manyistr[rrindex][ix].str;
+		if (item == NULL) break;
+		Tcl_ListObjAppendElement(interp, itemsObj,
+				Tcl_NewStringObj(item, answ->rrs.manyistr[rrindex][ix].i));
+		++ix;
+	}
+
+	DNSFormatRRDataTXT2(interp, resflags, resObjPtr, itemsObj);
+
+	return TCL_OK;
+}
+
+static int
+DNSParseRRDataSRV (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	DNSFormatRRDataSRV(interp, resflags, resObjPtr,
+			answ->rrs.srvraw[rrindex].priority,
+			answ->rrs.srvraw[rrindex].weight,
+			answ->rrs.srvraw[rrindex].port,
+			answ->rrs.srvraw[rrindex].host);
+
+	return TCL_OK;
+}
+
+static int
 DNSParseRRDataUnknown (
 	Tcl_Interp *interp,
 	const adns_answer *answ,
@@ -149,7 +283,7 @@ DNSParseRRData (
 		case  1: /* A */
 			return DNSParseRRDataA(interp, answ, rrindex, resflags, resObjPtr);
 		case  6: /* SOA */
-			/* return DNSMsgParseRRDataSOA(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataSOA(interp, answ, rrindex, resflags, resObjPtr);
 		case  2: /* NS */
 		case  3: /* MD */
 		case  4: /* MF */
@@ -158,19 +292,20 @@ DNSParseRRData (
 		case  8: /* MG */
 		case  9: /* MR */
 		case 12: /* PTR */
-			/* return DNSMsgParseRRDataPTR(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataPTR(interp, answ, rrindex, resflags, resObjPtr);
 		case 14: /* MINFO */
 		case 17: /* RP */
-			/* return DNSMsgParseRRDataMINFO(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataMINFO(interp, answ, rrindex, resflags, resObjPtr);
 		case 15: /* MX */
 		case 18: /* AFSDB */
 		case 21: /* RT */
-			/* return DNSMsgParseRRDataMX(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataMX(interp, answ, rrindex, resflags, resObjPtr);
 		case 13: /* HINFO */
+			return DNSParseRRDataHINFO(interp, answ, rrindex, resflags, resObjPtr);
 		case 16: /* TXT */
 		case 19: /* X25 */
 		case 20: /* ISDN */
-			/* return DNSMsgParseRRDataTXT(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataTXT(interp, answ, rrindex, resflags, resObjPtr);
 		case 10: /* NULL */
 			/* return DNSMsgParseRRDataNULL(interp, mh, rdlength, resflags, resObjPtr); */
 		case 11: /* WKS */
@@ -186,7 +321,7 @@ DNSParseRRData (
 		case 30: /* NXT (obsolete) */
 			/* return DNSMsgParseRRDataNXT(interp, mh, rdlength, resObjPtr); */
 		case 33: /* SRV */
-			/* return DNSMsgParseRRDataSRV(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataSRV(interp, answ, rrindex, resflags, resObjPtr);
 		case 249: /* TKEY */
 			/* return DNSMsgParseRRDataTKEY(interp, mh, rdlength, resObjPtr); */
 		case 250: /* TSIG */
@@ -211,7 +346,6 @@ DNSParseRRSet (
 	)
 {
 	const unsigned short qclass = 1; /* IN */
-	const int RES_WANTLIST = (RES_SECTNAMES | RES_MULTIPLE);
 
 	time_t now;
 	unsigned long ttl;
@@ -221,19 +355,8 @@ DNSParseRRSet (
 	ttl = answ->expires - now;
 
 	if (resflags & RES_QUESTION) {
-		Tcl_Obj *sectObj;
-		if (resflags & RES_SECTNAMES) {
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj("question", -1));
-		}
-		if (resflags & RES_WANTLIST) {
-			sectObj = Tcl_NewListObj(0, NULL);
-			Tcl_ListObjAppendElement(interp, resObj, sectObj);
-		} else {
-			sectObj = resObj;
-		}
-		DNSFormatQuestion(interp, resflags, sectObj,
-				answ->owner, answ->type, qclass);
+		DNSFormatFakeQuestion(interp, resflags, resObj,
+			answ->owner, answ->type, qclass);
 	}
 
 	if (resflags & RES_ANSWER) {
@@ -306,6 +429,9 @@ Impl_Resolve (
 	const unsigned int resflags
 	)
 {
+	const int qflags = (adns_qf_quoteok_query | adns_qf_quoteok_anshost
+			| adns_qf_owner);
+
 	InterpData *interpData;
 	adns_answer *answPtr;
 	int res;
@@ -314,7 +440,7 @@ Impl_Resolve (
 	interpData = (InterpData *) clientData;
 
 	res = adns_synchronous(interpData->astate,
-			Tcl_GetStringFromObj(queryObj, NULL), qtype, adns_qf_owner, &answPtr);
+			Tcl_GetStringFromObj(queryObj, NULL), qtype, qflags, &answPtr);
 	if (res != 0) {
 		/* Tcl_SetErrno(res); */  /* TODO does ADNS actually set the errno? */
 		DNSMsgSetPosixError(interp, res);

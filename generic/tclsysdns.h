@@ -19,6 +19,7 @@
 #define RES_NAMES       128  /* Add data field name before each data field */
 #define RES_FULL        (RES_DETAIL | RES_NAMES)
 #define RES_MULTIPLE    256  /* more than one record in the output list */
+#define RES_WANTLIST   (RES_SECTNAMES | RES_MULTIPLE)
 
 /* Flags for the Impl_Reinit command */
 #define REINIT_RESETOPTS 1   /* reset resolver options */

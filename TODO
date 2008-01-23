@@ -2,6 +2,11 @@ $Id$
 
 HIGH:
 
+* (adns) Check and re-check tricks with adns_rr_strpair and its
+  cousins, implement HINFO formatting. Check relation of HINFO
+  to TXT and stuff, since ADNS uses different formats for some
+  records we parse uniformly for other backends.
+
 * (adns) Check whether ADNS sets errno on errors or just returns
   its "would have been" value.
 
@@ -101,6 +106,8 @@ LOW:
   Same for libdnsres (http://monkey.org/~provos/libdnsres/).
 
 * What's with DNS support on Win9x/WinNT?
+
+* (adns) Test MINFO (and/or RP) impl.
 
 * An AIX communications programming reference document
   http://publib.boulder.ibm.com/infocenter/pseries/v5r3/topic/com.ibm.aix.commtechref/doc/commtrf2/commtrf2.pdf
