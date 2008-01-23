@@ -503,6 +503,13 @@ Impl_Resolve (
 
 	do {
 		if (resflags & RES_QUESTION) {
+			int len;
+			Tcl_ListObjLength(interp, questObj, &len);
+			if (len == 0) {
+				DNSFormatFakeQuestion(interp, resflags, questObj,
+						Tcl_GetStringFromObj(queryObj, NULL),
+						qtype, DNS_CLASS_INTERNET);
+			}
 			if (resflags & RES_SECTNAMES) {
 				Tcl_ListObjAppendElement(interp, resObj,
 						Tcl_NewStringObj("question", -1));
