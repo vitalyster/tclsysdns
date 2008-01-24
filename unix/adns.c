@@ -201,13 +201,17 @@ DNSParseRRDataHINFO (
 	Tcl_Obj **resObjPtr
 	)
 {
-	/*
-	DNSFormatRRDataTXT(interp, resflags, resObjPtr,
-			2, answ->rrs.intstrpair[rrindex].array);
-	*/
+	int i;
+	Tcl_Obj *items[2], *itemsObj;
 
-	/* TODO fix this */
-	*resObjPtr = Tcl_NewStringObj("TODO", -1);
+	for (i = 0; i < 2; ++i) {
+		items[i] = Tcl_NewStringObj(
+				answ->rrs.intstrpair[rrindex].array[i].str,
+				answ->rrs.intstrpair[rrindex].array[i].i);
+	}
+	itemsObj = Tcl_NewListObj(2, items);
+
+	DNSFormatRRDataTXT2(interp, resflags, resObjPtr, itemsObj);
 
 	return TCL_OK;
 }

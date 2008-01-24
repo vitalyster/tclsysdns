@@ -1,5 +1,7 @@
 $Id$
 
+See also generic/tclsysdns.h for DBC_* defines.
+
 resolver:
 
 * Use TCP (RES_USEVC) / -tcponly.

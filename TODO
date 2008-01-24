@@ -2,21 +2,33 @@ $Id$
 
 HIGH:
 
-* (adns) Check and re-check tricks with adns_rr_strpair and its
-  cousins, implement HINFO formatting. Check relation of HINFO
-  to TXT and stuff, since ADNS uses different formats for some
-  records we parse uniformly for other backends.
+* Introduce Impl_ style functions which should return a list
+  of supported RRs. The front-end resolving command proc should
+  refuse to proceceed with unsupported RR unless -rawresult
+  is also supplied (and supported by the backend).
+
+* Introduce Impl_ style functions which should ireturn a list of
+  backend "capabilities" (such as an ability to use TCP, accept
+  truncated results, async operation, ability to return raw
+  messages, etc). This is needed to check options passed to
+  [::sysdns::resolve] for validity.
+  Also see the discussion of [cget] below.
+
+* Think of implementing a way for run-time augmenting lists of
+  possible options for [::sydns::*] (at init stage) by those
+  offerred by the backend.
 
 * (adns) Check whether ADNS sets errno on errors or just returns
   its "would have been" value.
 
-* (adns) Implement support for remaining RR types.
+* (adns) Implement support for some of remaining RR types
+  (namely, AAAA, WKS, NULL).
 
 * (lwres) provide for creation of (bogus (for question) or empty
   members of result set to comply to the script-level interface
   of [::sysdns::resolve].
-  Same for ADNS (if there's really no way to get full raw
-  messages from it).
+
+* (lwres) implement processing of supported RRs.
 
 * Factor out some DNS message parsing bits from unix/dnsmsg.c
   and unix/lwres.c (namely, generation of POSIX errors, parsing
@@ -26,15 +38,23 @@ HIGH:
   Probably this should be generalized to the whole DNS
   subsystem.
 
-* (adns) think of dropping the support for "cooked" answers and
-  opt for processing of raw messages via unix/dnsmsg.c.
-  Unfortunately, it seems that it's impossible to get really
-  "raw" message from ADNS, so a) only the RRs in the answer
-  section are available; b) section header is pre-parsed, and
-  only a pointer to RDATA field is returned, so to implement
-  parsing of such messages, dnsmsg.c should provide external
-  function for parsing RDATA, and to call it, some state should
-  be properly cooked.
+* Implement [configure] method.
+
+* Implement [cget] method.
+
+* Implement "-raw" format option for [resolve]. This implies
+  checking for the OS version on Windows (which should
+  probably be done once at startup and cached).
+  Notice that both input and output might conceptually be "raw",
+  so, probably, something like "-rawquery" and "-rawresult"
+  is approptiate.
+
+* Bring the list of DNS RR types in sync with
+  http://www.iana.org/assignments/dns-parameters
+  (seems like VC defines several types that are unusable
+  in queries and thus should be avoided).
+
+* Write test suite.
 
 * (FreeBSD) two issues should be addressed (probably via autoconf):
   * adns.h and libadns.a cannot be found because they're installed
@@ -44,22 +64,6 @@ HIGH:
 * (NetBSD) resolver fails to run under multi-threaded Tcl --
   dumps core with "_res not supported on multi-...".
   We have to investigate possible workarounds.
-
-* Write test suite.
-
-* Bring the list of DNS RR types in sync with
-  http://www.iana.org/assignments/dns-parameters
-  (seems like VC defines several types that are unusable
-  in queries and thus should be avoided).
-
-* Implement [configure] method.
-
-* Implement "-raw" format option for [resolve]. This implies
-  checking for the OS version on Windows (which should
-  probably be done once at startup and cached).
-  Notice that both input and output might conceptually be "raw",
-  so, probably, something like "-rawquery" and "-rawresult"
-  is approptiate.
 
 NORMAL:
 

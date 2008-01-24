@@ -24,6 +24,16 @@
 /* Flags for the Impl_Reinit command */
 #define REINIT_RESETOPTS 1   /* reset resolver options */
 
+/* Capabilities of DNS resolution backends */
+#define DBC_RAWRESULT  1  /* Return raw DNS message as a query result */
+#define DBC_TCP        2  /* Use TCP, don't try UDP first */
+#define DBC_TRUNCOK    4  /* Accept truncated results, don't retry with TCP */
+#define DBC_NOCACHE    8  /* Bypass local cache */
+#define DBC_NOWIRE    16  /* Look at local cache only */
+#define DBC_SEARCH    32  /* Use search lists (search unqualified names in defined domains) */
+#define DBC_PRIMARY   64  /* Use only primary DNS */
+/* DBC_DEFDOMAIN ? -- append default domain */
+
 int
 Impl_Init (
 	Tcl_Interp *interp,
@@ -52,4 +62,7 @@ Impl_Reinit (
 	ClientData clientData,
 	Tcl_Interp *interp,
 	const int flags);
+
+int
+Impl_GetBackendCapabilities (void);
 
