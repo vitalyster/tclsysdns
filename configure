@@ -7189,6 +7189,19 @@ fi
 # resolv, lwres and adns are supported, resolv is the default.
 #--------------------------------------------------------------------
 if test "${TEA_PLATFORM}" = "unix" ; then
+	# Check local OS to adjust compiler search paths on *BSD:
+	{ echo "$as_me:$LINENO: checking what system we're on" >&5
+echo $ECHO_N "checking what system we're on... $ECHO_C" >&6; }
+	OS=`uname -s`; echo $OS
+	case `echo $OS | tr a-z A-Z` in
+		FREEBSD)
+			CFLAGS="$CFLAGS -L/usr/local/lib -I/usr/local/include"
+		;;
+		NETBSD)
+			CFLAGS="$CFLAGS -L/usr/pkg/lib -I/usr/pkg/include"
+		;;
+	esac
+
 	{ echo "$as_me:$LINENO: checking what backend to use for DNS resolution" >&5
 echo $ECHO_N "checking what backend to use for DNS resolution... $ECHO_C" >&6; }
 

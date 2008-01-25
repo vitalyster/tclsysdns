@@ -127,6 +127,18 @@ AC_SUBST(CLEANFILES)
 # resolv, lwres and adns are supported, resolv is the default.
 #--------------------------------------------------------------------
 if test "${TEA_PLATFORM}" = "unix" ; then
+	# Check local OS to adjust compiler search paths on *BSD:
+	AC_MSG_CHECKING([what system we're on])
+	OS=`uname -s`; echo $OS
+	case `echo $OS | tr a-z A-Z` in
+		FREEBSD)
+			CFLAGS="$CFLAGS -L/usr/local/lib -I/usr/local/include"
+		;;
+		NETBSD)
+			CFLAGS="$CFLAGS -L/usr/pkg/lib -I/usr/pkg/include"
+		;;
+	esac
+
 	AC_MSG_CHECKING([what backend to use for DNS resolution])
 	AC_ARG_WITH(backend,
 		AC_HELP_STRING([--with-backend],
