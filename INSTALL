@@ -5,10 +5,14 @@ SUPPORTED PLATFORMS
 
 This package is known to build on these platforms:
 
-* Linux (Debian Etch, i386, libc 2.3.6, gcc 4.1.2).
+* Linux (Debian Etch, i386, libc 2.3.6, GCC 4.1.2).
+* FreeBSD 6.2 (i386, Tcl 8.4.13, ADNS 1.3, GCC 3.4.6)
+* NetBSD 4.0 (i386, Tcl 8.4.16, ADNS 1.11nb2, GCC 4.1.2)
 * Win32:
   * MinGW 5.1.3 (gcc 4.1.x, win32api 3.11).
   * Microsoft Visual C (VC6 and VC8).
+
+Read COMPATIBILITY file for additional details.
 
 
 BUILDING ON UNIX PLATFORMS

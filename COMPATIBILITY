@@ -1,0 +1,17 @@
+$Id$
+
+
+NetBSD
+
+NetBSD 4.0 ships with thread-enabled Tcl 8.4.16 and
+tclsysdns dumps core when using "resolver" backend
+because NetBSD explicitly forbids to use res_* family
+of resolver function in multi-threaded applications.
+
+This behaviour doesn't depend on whether tclsysdns
+is compiled with --enable-threads or not.
+
+Probably, no workarounds are available for this case.
+
+
+# vim:noet:tw=64
