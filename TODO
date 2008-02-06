@@ -7,7 +7,7 @@ HIGH:
   refuse to proceceed with unsupported RR unless -rawresult
   is also supplied (and supported by the backend).
 
-* Introduce Impl_ style functions which should ireturn a list of
+* Introduce Impl_ style functions which should return a list of
   backend "capabilities" (such as an ability to use TCP, accept
   truncated results, async operation, ability to return raw
   messages, etc). This is needed to check options passed to
@@ -55,11 +55,6 @@ HIGH:
   in queries and thus should be avoided).
 
 * Write test suite.
-
-* (FreeBSD) two issues should be addressed (probably via autoconf):
-  * adns.h and libadns.a cannot be found because they're installed
-    under /usr/local which seems to be the default place for
-    "non essential" packages and software from ports.
 
 * (NetBSD) resolver fails to run under multi-threaded Tcl --
   dumps core with "_res not supported on multi-...".

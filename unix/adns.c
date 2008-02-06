@@ -17,6 +17,7 @@
 
 typedef struct {
 	adns_state astate;
+	adns_queryflags qflags;
 } InterpData;
 
 static void
@@ -48,13 +49,12 @@ AdnsSetError (
 static int
 AdnsInit (
 	Tcl_Interp *interp,
-	InterpData **dataPtr
+	adns_state *statePtr
 	)
 {
-	adns_state st;
 	int res;
 
-	res = adns_init(&st, adns_if_noerrprint, NULL);
+	res = adns_init(statePtr, adns_if_noerrprint, NULL);
 	if (res != 0) {
 		/* TODO implement setting of error code with something like AdnsSetError */
 		switch (res) {
@@ -69,9 +69,6 @@ AdnsInit (
 		return TCL_ERROR;
 	}
 
-	*dataPtr = (InterpData *) ckalloc(sizeof(InterpData));
-	(*dataPtr)->astate = st;
-
 	return TCL_OK;
 }
 
@@ -81,9 +78,19 @@ Impl_Init (
 	ClientData *clientDataPtr
 	)
 {
-	if (AdnsInit(interp, (InterpData **) clientDataPtr) != TCL_OK) {
+	adns_state st;
+	InterpData *dataPtr;
+
+	if (AdnsInit(interp, &st) != TCL_OK) {
 		return TCL_ERROR;
 	}
+
+	dataPtr = (InterpData *) ckalloc(sizeof(InterpData));
+	dataPtr->astate = st;
+	dataPtr->qflags = (adns_qf_quoteok_query | adns_qf_quoteok_anshost | adns_qf_owner);
+
+	*clientDataPtr = (ClientData) dataPtr;
+
 	return TCL_OK;
 }
 
@@ -433,9 +440,6 @@ Impl_Resolve (
 	const unsigned int resflags
 	)
 {
-	const int qflags = (adns_qf_quoteok_query | adns_qf_quoteok_anshost
-			| adns_qf_owner);
-
 	InterpData *interpData;
 	adns_answer *answPtr;
 	int res;
@@ -444,7 +448,7 @@ Impl_Resolve (
 	interpData = (InterpData *) clientData;
 
 	res = adns_synchronous(interpData->astate,
-			Tcl_GetStringFromObj(queryObj, NULL), qtype, qflags, &answPtr);
+			Tcl_GetStringFromObj(queryObj, NULL), qtype, interpData->qflags, &answPtr);
 	if (res != 0) {
 		/* Tcl_SetErrno(res); */  /* TODO does ADNS actually set the errno? */
 		DNSMsgSetPosixError(interp, res);
@@ -482,6 +486,41 @@ Impl_Reinit (
 	)
 {
 	/* TODO implement */
+	return TCL_OK;
+}
+
+int
+Impl_GetBackendCapabilities (void)
+{
+	return DBC_TCP | DBC_SEARCH;
+}
+
+int
+Impl_ConfigureBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int options
+	)
+{
+	InterpData *interpData;
+
+	interpData = (InterpData *) clientData;
+
+	return TCL_OK;
+}
+
+int
+Impl_CgetBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int option,
+	Tcl_Obj **resObjPtr
+	)
+{
+	InterpData *interpData;
+
+	interpData = (InterpData *) clientData;
+
 	return TCL_OK;
 }
 

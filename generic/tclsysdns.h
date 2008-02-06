@@ -33,6 +33,8 @@
 #define DBC_SEARCH    32  /* Use search lists (search unqualified names in defined domains) */
 #define DBC_PRIMARY   64  /* Use only primary DNS */
 /* DBC_DEFDOMAIN ? -- append default domain */
+/* DBC_NORECURSION ? -- don't request recursive processing on the server */
+/* DBC_STAYOPEN ? -- keep TCP connection open between queries */
 
 int
 Impl_Init (
@@ -65,4 +67,17 @@ Impl_Reinit (
 
 int
 Impl_GetBackendCapabilities (void);
+
+int
+Impl_ConfigureBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int options);
+
+int
+Impl_CgetBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int option,
+	Tcl_Obj **resObjPtr);
 
