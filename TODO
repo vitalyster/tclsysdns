@@ -7,13 +7,6 @@ HIGH:
   refuse to proceceed with unsupported RR unless -rawresult
   is also supplied (and supported by the backend).
 
-* Introduce Impl_ style functions which should return a list of
-  backend "capabilities" (such as an ability to use TCP, accept
-  truncated results, async operation, ability to return raw
-  messages, etc). This is needed to check options passed to
-  [::sysdns::resolve] for validity.
-  Also see the discussion of [cget] below.
-
 * Think of implementing a way for run-time augmenting lists of
   possible options for [::sydns::*] (at init stage) by those
   offerred by the backend.

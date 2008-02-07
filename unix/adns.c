@@ -20,6 +20,9 @@ typedef struct {
 	adns_queryflags qflags;
 } InterpData;
 
+const adns_queryflags def_qflags = (adns_qf_quoteok_query
+		| adns_qf_quoteok_anshost | adns_qf_owner);
+
 static void
 DNSMsgSetPosixError (
 	Tcl_Interp *interp,
@@ -87,7 +90,7 @@ Impl_Init (
 
 	dataPtr = (InterpData *) ckalloc(sizeof(InterpData));
 	dataPtr->astate = st;
-	dataPtr->qflags = (adns_qf_quoteok_query | adns_qf_quoteok_anshost | adns_qf_owner);
+	dataPtr->qflags = def_qflags;
 
 	*clientDataPtr = (ClientData) dataPtr;
 
@@ -485,26 +488,48 @@ Impl_Reinit (
 	const int flags
 	)
 {
-	/* TODO implement */
+	InterpData *interpData = (InterpData *) clientData;
+
+	free(interpData->astate);
+
+	if (AdnsInit(interp, &(interpData->astate)) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
+	if (flags | REINIT_RESETOPTS) {
+		interpData->qflags = def_qflags;
+	}
+
 	return TCL_OK;
 }
 
 int
 Impl_GetBackendCapabilities (void)
 {
-	return DBC_TCP | DBC_SEARCH;
+	return DBC_DEFAULTS | DBC_TCP | DBC_SEARCH;
 }
 
 int
 Impl_ConfigureBackend (
 	ClientData clientData,
 	Tcl_Interp *interp,
-	const int options
+	const int flags
 	)
 {
 	InterpData *interpData;
 
 	interpData = (InterpData *) clientData;
+
+	if (flags & DBC_DEFAULTS) {
+		interpData->qflags = def_qflags;
+	} else {
+		if (flags & DBC_TCP) {
+			interpData->qflags |= adns_qf_usevc;
+		}
+		if (flags & DBC_SEARCH) {
+			interpData->qflags |= adns_qf_search;
+		}
+	}
 
 	return TCL_OK;
 }

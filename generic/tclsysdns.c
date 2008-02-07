@@ -235,6 +235,71 @@ Sysdns_Reinit (
 	return Impl_Reinit(clientData, interp, flags);
 }
 
+static int
+Sysdns_Configure (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	int objc,
+	Tcl_Obj *const objv[]
+	)
+{
+	const char *optnames[] = {
+		"-defaults",        /* DBC_DEFAULTS */
+		"-rawresult",       /* DBC_RAWRESULT */
+		"-tcp",             /* DBC_TCP */
+		"-accepttruncated", /* DBC_TRUNCOK */
+		"-nocache",         /* DBC_NOCACHE */
+		"-nowire",          /* DBC_NOWIRE */
+		"-search",          /* DBC_SEARCH */
+		"-primarynsonly",   /* DBC_PRIMARY */
+		NULL };
+	const int flagvalues[] = {
+		DBC_DEFAULTS,
+		DBC_RAWRESULT,
+		DBC_TCP,
+		DBC_TRUNCOK,
+		DBC_NOCACHE,
+		DBC_NOWIRE,
+		DBC_SEARCH,
+		DBC_PRIMARY
+	};
+
+	int opt, i, caps, flags;
+
+	caps  = Impl_GetBackendCapabilities();
+	flags = 0;
+
+	for (i = 1; i < objc; ++i) {
+		int flag;
+
+		if (Tcl_GetIndexFromObj(interp, objv[i],
+					optnames, "option", 0, &opt) != TCL_OK) {
+			return TCL_ERROR;
+		}
+
+		flag = flagvalues[opt];
+
+		if (caps & flag) {
+			flags |= flag;
+		} else {
+			Tcl_ResetResult(interp);
+			Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
+					"\": not supported by the DNS resolution backend", NULL);
+			return TCL_ERROR;
+		}
+	}
+
+	if (flags & DBC_DEFAULTS) {
+		if (flags & ~DBC_DEFAULTS) {
+			Tcl_SetObjResult(interp, Tcl_NewStringObj("Option \"-defaults\" "
+						"cannot be combined with other options", -1));
+			return TCL_ERROR;
+		}
+	}
+
+	return Impl_ConfigureBackend(clientData, interp, flags);
+}
+
 #ifdef BUILD_sysdns
 #undef TCL_STORAGE_CLASS
 #define TCL_STORAGE_CLASS DLLEXPORT
@@ -266,6 +331,9 @@ Sysdns_Init(Tcl_Interp * interp)
 			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
 	Tcl_CreateObjCommand(interp, "::sysdns::reinit",
 			Sysdns_Reinit,
+			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
+	Tcl_CreateObjCommand(interp, "::sysdns::configure",
+			Sysdns_Configure,
 			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
 
 	if (Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION) != TCL_OK) {

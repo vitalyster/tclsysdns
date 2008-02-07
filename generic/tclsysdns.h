@@ -25,13 +25,14 @@
 #define REINIT_RESETOPTS 1   /* reset resolver options */
 
 /* Capabilities of DNS resolution backends */
-#define DBC_RAWRESULT  1  /* Return raw DNS message as a query result */
-#define DBC_TCP        2  /* Use TCP, don't try UDP first */
-#define DBC_TRUNCOK    4  /* Accept truncated results, don't retry with TCP */
-#define DBC_NOCACHE    8  /* Bypass local cache */
-#define DBC_NOWIRE    16  /* Look at local cache only */
-#define DBC_SEARCH    32  /* Use search lists (search unqualified names in defined domains) */
-#define DBC_PRIMARY   64  /* Use only primary DNS */
+#define DBC_DEFAULTS   1  /* Reset configuration to defaults. Cannot be combined */
+#define DBC_RAWRESULT  2  /* Return raw DNS message as a query result */
+#define DBC_TCP        4  /* Use TCP, don't try UDP first */
+#define DBC_TRUNCOK    8  /* Accept truncated results, don't retry with TCP */
+#define DBC_NOCACHE   16  /* Bypass local cache */
+#define DBC_NOWIRE    32  /* Look at local cache only */
+#define DBC_SEARCH    64  /* Use search lists (search unqualified names in defined domains) */
+#define DBC_PRIMARY  128  /* Use only primary DNS */
 /* DBC_DEFDOMAIN ? -- append default domain */
 /* DBC_NORECURSION ? -- don't request recursive processing on the server */
 /* DBC_STAYOPEN ? -- keep TCP connection open between queries */
