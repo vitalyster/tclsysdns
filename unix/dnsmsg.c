@@ -906,6 +906,8 @@ DNSMsgParseRRSection (
 		} else {
 			sectObj = resObj;
 		}
+	} else {
+		sectObj = NULL; /* to silence the compiler */
 	}
 
 	for (i = 0; i < nrrs; ++i) {
@@ -948,7 +950,6 @@ DNSParseMessage (
 	unsigned int resflags
 	)
 {
-	const int RES_WANTLIST = (RES_SECTNAMES | RES_MULTIPLE);
 	dns_msg_handle handle;
 	Tcl_Obj *resObj, *sectObj;
 	int i;
@@ -963,6 +964,7 @@ DNSParseMessage (
 	}
 
 	resObj = Tcl_NewListObj(0, NULL);
+	sectObj = NULL; /* silence the compiler */
 
 	if (resflags & RES_QUESTION) {
 		if (resflags & RES_SECTNAMES) {

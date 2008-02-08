@@ -255,6 +255,40 @@ DNSParseRRDataTXT (
 }
 
 static int
+DNSParseRRDataNULL (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	DNSFormatRRDataNULL(interp, resflags, resObjPtr,
+			answ->rrs.byteblock[rrindex].len,
+			answ->rrs.byteblock[rrindex].data);
+	return TCL_OK;
+}
+
+static int
+DNSParseRRDataAAAA (
+	Tcl_Interp *interp,
+	const adns_answer *answ,
+	const int rrindex,
+	const unsigned int resflags,
+	Tcl_Obj **resObjPtr
+	)
+{
+	if (answ->rrs.byteblock[rrindex].len != 16) {
+		DNSMsgSetPosixError(interp, EBADMSG);
+		return TCL_ERROR;
+	}
+
+	DNSFormatRRDataAAAA(interp, resflags, resObjPtr,
+		(const unsigned short *) answ->rrs.byteblock[rrindex].data);
+	return TCL_OK;
+}
+
+static int
 DNSParseRRDataSRV (
 	Tcl_Interp *interp,
 	const adns_answer *answ,
@@ -293,7 +327,15 @@ DNSParseRRData (
 	Tcl_Obj **resObjPtr
 	)
 {
-	switch (answ->type) {
+	adns_rrtype qtype;
+
+	if (answ->type & adns_r_unknown) {
+		qtype = answ->type & ~adns_r_unknown;
+	} else {
+		qtype = answ->type;
+	}
+
+	switch (qtype) {
 		case  1: /* A */
 			return DNSParseRRDataA(interp, answ, rrindex, resflags, resObjPtr);
 		case  6: /* SOA */
@@ -321,11 +363,11 @@ DNSParseRRData (
 		case 20: /* ISDN */
 			return DNSParseRRDataTXT(interp, answ, rrindex, resflags, resObjPtr);
 		case 10: /* NULL */
-			/* return DNSMsgParseRRDataNULL(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataNULL(interp, answ, rrindex, resflags, resObjPtr);
 		case 11: /* WKS */
 			/* return DNSMsgParseRRDataWKS(interp, mh, rdlength, resflags, resObjPtr); */
 		case 28: /* AAAA */
-			/* return DNSMsgParseRRDataAAAA(interp, mh, rdlength, resflags, resObjPtr); */
+			return DNSParseRRDataAAAA(interp, answ, rrindex, resflags, resObjPtr);
 		case 24: /* SIG */
 			/* return DNSMsgParseRRDataSIG(interp, mh, rdlength, resObjPtr); */
 		case 25: /* KEY */
@@ -433,6 +475,30 @@ DNSParseRRSet (
 	return TCL_OK;
 }
 
+static adns_rrtype
+AdnsNormalizeQueryType (
+	const unsigned short qtype
+	)
+{
+	/* Types known to ADNS are as of
+	 * adns.h,v 1.95 2006/04/08 14:36:57 */
+	switch (qtype) {
+		case adns_r_a:
+		case adns_r_ns_raw:
+		case adns_r_cname:
+		case adns_r_soa_raw:
+		case adns_r_ptr_raw:
+		case adns_r_hinfo:
+		case adns_r_mx_raw:
+		case adns_r_txt:
+		case adns_r_rp_raw:
+		case adns_r_srv_raw:
+			return qtype;
+		default:
+			return qtype | adns_r_unknown;
+	}
+}
+
 int
 Impl_Resolve (
 	ClientData clientData,
@@ -451,7 +517,8 @@ Impl_Resolve (
 	interpData = (InterpData *) clientData;
 
 	res = adns_synchronous(interpData->astate,
-			Tcl_GetStringFromObj(queryObj, NULL), qtype, interpData->qflags, &answPtr);
+			Tcl_GetStringFromObj(queryObj, NULL),
+			AdnsNormalizeQueryType(qtype), interpData->qflags, &answPtr);
 	if (res != 0) {
 		/* Tcl_SetErrno(res); */  /* TODO does ADNS actually set the errno? */
 		DNSMsgSetPosixError(interp, res);
@@ -472,13 +539,17 @@ Impl_Resolve (
 
 	answObj = Tcl_NewListObj(0, NULL);
 
-	if (DNSParseRRSet(interp, answPtr, resflags, answObj) != TCL_OK) {
-		return TCL_ERROR;
-	}
+	res = DNSParseRRSet(interp, answPtr, resflags, answObj);
 
 	free(answPtr);
-	Tcl_SetObjResult(interp, answObj);
-	return TCL_OK;
+
+	if (res != TCL_OK) {
+		Tcl_DecrRefCount(answObj);
+		return TCL_ERROR;
+	} else {
+		Tcl_SetObjResult(interp, answObj);
+		return TCL_OK;
+	}
 }
 
 int

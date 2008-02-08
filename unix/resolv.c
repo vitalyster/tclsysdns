@@ -141,3 +141,33 @@ Impl_Reinit (
 	return TCL_OK;
 }
 
+int
+Impl_GetBackendCapabilities (void)
+{
+	/* TODO implement */
+	return DBC_TCP;
+}
+
+int
+Impl_ConfigureBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int options
+	)
+{
+	/* TODO implement */
+	return TCL_OK;
+}
+
+int
+Impl_CgetBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int option,
+	Tcl_Obj **resObjPtr
+	)
+{
+	/* TODO implement */
+	return TCL_OK;
+}
+
