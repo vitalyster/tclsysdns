@@ -14,6 +14,7 @@
 #include "tclsysdns.h"
 #include "dnsparams.h"
 #include "resfmt.h"
+#include "qtypes.h"
 
 typedef struct {
 	adns_state astate;
@@ -336,55 +337,57 @@ DNSParseRRData (
 	}
 
 	switch (qtype) {
-		case  1: /* A */
+		case SYSDNS_TYPE_A:
 			return DNSParseRRDataA(interp, answ, rrindex, resflags, resObjPtr);
-		case  6: /* SOA */
+		case SYSDNS_TYPE_SOA:
 			return DNSParseRRDataSOA(interp, answ, rrindex, resflags, resObjPtr);
-		case  2: /* NS */
-		case  3: /* MD */
-		case  4: /* MF */
-		case  5: /* CNAME */
-		case  7: /* MB */
-		case  8: /* MG */
-		case  9: /* MR */
-		case 12: /* PTR */
+		case SYSDNS_TYPE_NS:
+		case SYSDNS_TYPE_MD:
+		case SYSDNS_TYPE_MF:
+		case SYSDNS_TYPE_CNAME:
+		case SYSDNS_TYPE_MB:
+		case SYSDNS_TYPE_MG:
+		case SYSDNS_TYPE_MR:
+		case SYSDNS_TYPE_PTR:
 			return DNSParseRRDataPTR(interp, answ, rrindex, resflags, resObjPtr);
-		case 14: /* MINFO */
-		case 17: /* RP */
+		case SYSDNS_TYPE_MINFO:
+		case SYSDNS_TYPE_RP:
 			return DNSParseRRDataMINFO(interp, answ, rrindex, resflags, resObjPtr);
-		case 15: /* MX */
-		case 18: /* AFSDB */
-		case 21: /* RT */
+		case SYSDNS_TYPE_MX:
+		case SYSDNS_TYPE_AFSDB:
+		case SYSDNS_TYPE_RT:
 			return DNSParseRRDataMX(interp, answ, rrindex, resflags, resObjPtr);
-		case 13: /* HINFO */
+		case SYSDNS_TYPE_HINFO:
 			return DNSParseRRDataHINFO(interp, answ, rrindex, resflags, resObjPtr);
-		case 16: /* TXT */
-		case 19: /* X25 */
-		case 20: /* ISDN */
+		case SYSDNS_TYPE_TXT:
+		case SYSDNS_TYPE_X25:
+		case SYSDNS_TYPE_ISDN:
 			return DNSParseRRDataTXT(interp, answ, rrindex, resflags, resObjPtr);
-		case 10: /* NULL */
+		case SYSDNS_TYPE_NULL:
 			return DNSParseRRDataNULL(interp, answ, rrindex, resflags, resObjPtr);
-		case 11: /* WKS */
+		case SYSDNS_TYPE_WKS:
+			return DNSParseRRDataUnknown(interp, answ, resflags, resObjPtr);
 			/* return DNSMsgParseRRDataWKS(interp, mh, rdlength, resflags, resObjPtr); */
-		case 28: /* AAAA */
+		case SYSDNS_TYPE_AAAA:
 			return DNSParseRRDataAAAA(interp, answ, rrindex, resflags, resObjPtr);
-		case 24: /* SIG */
+		case SYSDNS_TYPE_SIG:
 			/* return DNSMsgParseRRDataSIG(interp, mh, rdlength, resObjPtr); */
-		case 25: /* KEY */
+		case SYSDNS_TYPE_KEY:
 			/* return DNSMsgParseRRDataKEY(interp, mh, rdlength, resObjPtr); */
-		case 34: /* ATMA */
+		case SYSDNS_TYPE_ATMA:
 			/* return DNSMsgParseRRDataATMA(interp, mh, rdlength, resObjPtr); */
-		case 30: /* NXT (obsolete) */
+		case SYSDNS_TYPE_NXT:
+			return DNSParseRRDataUnknown(interp, answ, resflags, resObjPtr);
 			/* return DNSMsgParseRRDataNXT(interp, mh, rdlength, resObjPtr); */
-		case 33: /* SRV */
+		case SYSDNS_TYPE_SRV:
 			return DNSParseRRDataSRV(interp, answ, rrindex, resflags, resObjPtr);
-		case 249: /* TKEY */
+		case SYSDNS_TYPE_TKEY:
 			/* return DNSMsgParseRRDataTKEY(interp, mh, rdlength, resObjPtr); */
-		case 250: /* TSIG */
+		case SYSDNS_TYPE_TSIG:
 			/* return DNSMsgParseRRDataTSIG(interp, mh, rdlength, resObjPtr); */
-		case 0xFF01: /* WINS */
+		case SYSDNS_TYPE_WINS:
 			/* return DNSMsgParseRRDataWINS(interp, mh, rdlength, resObjPtr); */
-		case 0xFF02: /* WINSR, NBSTAT */
+		case SYSDNS_TYPE_WINSR:
 			/* return DNSMsgParseRRDataWINSR(interp, mh, rdlength, resObjPtr); */
 		default:
 			return DNSParseRRDataUnknown(interp, answ, resflags, resObjPtr);
