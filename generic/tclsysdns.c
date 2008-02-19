@@ -11,6 +11,9 @@
 
 typedef struct {
 	int refcount;
+	const char *b_name;             /* Backend name */
+	int b_caps;                     /* Backend capabilities */
+	const unsigned short *b_qtypes; /* QTYPEs supported by backend */
 	ClientData impldata;
 } PkgInterpData;
 
@@ -24,7 +27,11 @@ Sysdns_PkgInit (
 
 	interpData = (PkgInterpData *) ckalloc(sizeof(PkgInterpData));
 
-	if (Impl_Init(interp, &(interpData->impldata)) != TCL_OK) {
+	if (Impl_Init(interp,
+				&(interpData->impldata),
+				&(interpData->b_name),
+				&(interpData->b_caps),
+				&(interpData->b_qtypes)) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
@@ -264,10 +271,13 @@ Sysdns_Configure (
 		DBC_PRIMARY
 	};
 
-	int opt, i, caps, flags;
+	PkgInterpData *interpData;
+	int opt, i, flags;
 
-	caps  = Impl_GetBackendCapabilities();
+	interpData = (PkgInterpData *) clientData;
 	flags = 0;
+
+	printf("%s\n", interpData->b_name);
 
 	for (i = 1; i < objc; ++i) {
 		int flag;
@@ -279,7 +289,7 @@ Sysdns_Configure (
 
 		flag = flagvalues[opt];
 
-		if (caps & flag) {
+		if (interpData->b_caps & flag) {
 			flags |= flag;
 		} else {
 			Tcl_ResetResult(interp);
@@ -298,6 +308,17 @@ Sysdns_Configure (
 	}
 
 	return Impl_ConfigureBackend(clientData, interp, flags);
+}
+
+static int
+Sysdns_Cget (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	int objc,
+	Tcl_Obj *const objv[]
+	)
+{
+	return TCL_OK;
 }
 
 #ifdef BUILD_sysdns
@@ -334,6 +355,9 @@ Sysdns_Init(Tcl_Interp * interp)
 			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
 	Tcl_CreateObjCommand(interp, "::sysdns::configure",
 			Sysdns_Configure,
+			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
+	Tcl_CreateObjCommand(interp, "::sysdns::cget",
+			Sysdns_Cget,
 			Sysdns_RefInterpData(pkgInterpData), Sysdns_Cleanup);
 
 	if (Tcl_PkgProvide(interp, PACKAGE_NAME, PACKAGE_VERSION) != TCL_OK) {

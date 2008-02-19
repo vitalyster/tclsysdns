@@ -24,6 +24,12 @@ typedef struct {
 const adns_queryflags def_qflags = (adns_qf_quoteok_query
 		| adns_qf_quoteok_anshost | adns_qf_owner);
 
+static unsigned short
+SupportedQTypes[] = {
+	SYSDNS_TYPE_A,
+	0
+};
+
 static void
 DNSMsgSetPosixError (
 	Tcl_Interp *interp,
@@ -79,7 +85,10 @@ AdnsInit (
 int
 Impl_Init (
 	Tcl_Interp *interp,
-	ClientData *clientDataPtr
+	ClientData *clientDataPtr,
+	const char **namePtr,
+	int *capsPtr,
+	const unsigned short **qtypesPtr
 	)
 {
 	adns_state st;
@@ -94,6 +103,10 @@ Impl_Init (
 	dataPtr->qflags = def_qflags;
 
 	*clientDataPtr = (ClientData) dataPtr;
+
+	*namePtr = "ADNS";
+	*capsPtr = DBC_DEFAULTS | DBC_TCP | DBC_SEARCH;
+	*qtypesPtr = SupportedQTypes;
 
 	return TCL_OK;
 }
@@ -575,12 +588,6 @@ Impl_Reinit (
 	}
 
 	return TCL_OK;
-}
-
-int
-Impl_GetBackendCapabilities (void)
-{
-	return DBC_DEFAULTS | DBC_TCP | DBC_SEARCH;
 }
 
 int

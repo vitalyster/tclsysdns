@@ -40,7 +40,10 @@
 int
 Impl_Init (
 	Tcl_Interp *interp,
-	ClientData *clientDataPtr);
+	ClientData *clientDataPtr,
+	const char **namePtr,
+	int *capsPtr,
+	const unsigned short **qtypesPtr);
 
 void
 Impl_Cleanup (
@@ -65,9 +68,6 @@ Impl_Reinit (
 	ClientData clientData,
 	Tcl_Interp *interp,
 	const int flags);
-
-int
-Impl_GetBackendCapabilities (void);
 
 int
 Impl_ConfigureBackend (

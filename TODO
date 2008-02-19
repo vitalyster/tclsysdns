@@ -2,6 +2,14 @@ $Id$
 
 HIGH:
 
+* Holding of "impl interp data" is broken in tclsysdns -- only
+  impl data is really passed around so the top-level commands
+  cannot have their own state.
+  The solution is:
+  * PkgInterpData is passed around.
+  * A macro is provided for convenient extraction of impl
+    interp data if needed.
+
 * Introduce Impl_ style functions which should return a list
   of supported RRs. The front-end resolving command proc should
   refuse to proceceed with unsupported RR unless -rawresult
