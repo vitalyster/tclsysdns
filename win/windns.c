@@ -45,6 +45,42 @@
 /* Default resolver options */
 #define RES_DEFOPTS (DNS_QUERY_STANDARD | DNS_QUERY_DONT_RESET_TTL_VALUES)
 
+static const unsigned short
+SupportedQTypes[] = {
+	DNS_TYPE_A,
+	DNS_TYPE_SOA,
+	DNS_TYPE_NS,
+	DNS_TYPE_MD,
+	DNS_TYPE_MF,
+	DNS_TYPE_CNAME,
+	DNS_TYPE_MB,
+	DNS_TYPE_MG,
+	DNS_TYPE_MR,
+	DNS_TYPE_PTR,
+	DNS_TYPE_MINFO,
+	DNS_TYPE_RP,
+	DNS_TYPE_MX,
+	DNS_TYPE_AFSDB,
+	DNS_TYPE_RT,
+	DNS_TYPE_HINFO,
+	DNS_TYPE_TEXT,
+	DNS_TYPE_X25,
+	DNS_TYPE_ISDN,
+	DNS_TYPE_NULL,
+	DNS_TYPE_WKS,
+	DNS_TYPE_AAAA,
+	DNS_TYPE_SIG,
+	DNS_TYPE_KEY,
+	DNS_TYPE_ATMA,
+	DNS_TYPE_NXT,
+	DNS_TYPE_SRV,
+	DNS_TYPE_TKEY,
+	DNS_TYPE_TSIG,
+	DNS_TYPE_WINS,
+	DNS_TYPE_WINSR,
+	0
+};
+
 /* Code taken from win/tkWinTest.c of Tk
  *----------------------------------------------------------------------
  *
@@ -136,7 +172,10 @@ typedef struct {
 int
 Impl_Init (
 	Tcl_Interp *interp,
-	ClientData *clientDataPtr
+	ClientData *clientDataPtr,
+	const char **namePtr,
+	int *capsPtr,
+	const unsigned short **qtypesPtr
 	)
 {
 	InterpData *interpData;
@@ -145,6 +184,12 @@ Impl_Init (
 	interpData->res_opts = RES_DEFOPTS;
 
 	*clientDataPtr = (ClientData) interpData;
+
+	*namePtr = "Windows native";
+	*capsPtr = (DBC_RAWRESULT | DBC_TCP | DBC_TRUNCOK |
+			DBC_NOCACHE | DBC_NOWIRE |
+			DBC_SEARCH | DBC_PRIMARY);
+	*qtypesPtr = SupportedQTypes;
 
 	return TCL_OK;
 }
@@ -509,16 +554,19 @@ Impl_Resolve (
 				DNSFormatFakeQuestion(interp, resflags, questObj,
 						Tcl_GetStringFromObj(queryObj, NULL),
 						qtype, DNS_CLASS_INTERNET);
-			}
-			if (resflags & RES_SECTNAMES) {
-				Tcl_ListObjAppendElement(interp, resObj,
-						Tcl_NewStringObj("question", -1));
-			}
-			if (resflags & RES_WANTLIST) {
-				Tcl_ListObjAppendElement(interp, resObj, questObj);
-			} else {
 				Tcl_ListObjAppendList(interp, resObj, questObj);
 				Tcl_DecrRefCount(questObj);
+			} else {
+				if (resflags & RES_SECTNAMES) {
+					Tcl_ListObjAppendElement(interp, resObj,
+							Tcl_NewStringObj("question", -1));
+				}
+				if (resflags & RES_WANTLIST) {
+					Tcl_ListObjAppendElement(interp, resObj, questObj);
+				} else {
+					Tcl_ListObjAppendList(interp, resObj, questObj);
+					Tcl_DecrRefCount(questObj);
+				}
 			}
 		}
 		if (resflags & RES_ANSWER) {
@@ -575,6 +623,27 @@ Impl_Reinit (
 		interpData->res_opts = RES_DEFOPTS;
 	}
 
+	return TCL_OK;
+}
+
+int
+Impl_ConfigureBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int options
+	)
+{
+	return TCL_OK;
+}
+
+int
+Impl_CgetBackend (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	const int option,
+	Tcl_Obj **resObjPtr
+	)
+{
 	return TCL_OK;
 }
 

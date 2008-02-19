@@ -17,6 +17,9 @@ typedef struct {
 	ClientData impldata;
 } PkgInterpData;
 
+/* Accessor for the impldata field */
+#define ImplClientData(p) ( ((PkgInterpData *) p)->impldata )
+
 static int
 Sysdns_PkgInit (
 	Tcl_Interp *interp,
@@ -55,6 +58,7 @@ Sysdns_Cleanup (
 	if (interpData->refcount == 0) {
 		Impl_Cleanup(interpData->impldata);
 		ckfree((char *) interpData);
+		printf("Instance freed");
 	}
 }
 
@@ -68,7 +72,8 @@ Sysdns_RefInterpData (
 	interpData = (PkgInterpData *) clientData;
 	++interpData->refcount;
 
-	return interpData->impldata;
+	/* return interpData->impldata; */
+	return interpData;
 }
 
 static int
@@ -187,7 +192,8 @@ Sysdns_Resolve (
 		resflags |= RES_MULTIPLE;
 	}
 
-	return Impl_Resolve(clientData, interp, objv[1], qclass, qtype, resflags);
+	return Impl_Resolve(ImplClientData(clientData),
+			interp, objv[1], qclass, qtype, resflags);
 }
 
 static int
@@ -203,7 +209,7 @@ Sysdns_Nameservers (
 		return TCL_ERROR;
 	}
 
-	return Impl_GetNameservers(clientData, interp);
+	return Impl_GetNameservers(ImplClientData(clientData), interp);
 }
 
 static int
@@ -239,7 +245,7 @@ Sysdns_Reinit (
 		}
 	}
 
-	return Impl_Reinit(clientData, interp, flags);
+	return Impl_Reinit(ImplClientData(clientData), interp, flags);
 }
 
 static int
@@ -277,8 +283,6 @@ Sysdns_Configure (
 	interpData = (PkgInterpData *) clientData;
 	flags = 0;
 
-	printf("%s\n", interpData->b_name);
-
 	for (i = 1; i < objc; ++i) {
 		int flag;
 
@@ -307,7 +311,7 @@ Sysdns_Configure (
 		}
 	}
 
-	return Impl_ConfigureBackend(clientData, interp, flags);
+	return Impl_ConfigureBackend(ImplClientData(clientData), interp, flags);
 }
 
 static int
@@ -318,7 +322,35 @@ Sysdns_Cget (
 	Tcl_Obj *const objv[]
 	)
 {
-	return TCL_OK;
+	const char *optnames[] = {
+		"-querytypes",
+		NULL
+	};
+	typedef enum {
+		OPT_QUERYTYPES
+	} cget_opts;
+
+	int opt;
+
+	if (objc != 2) {
+		Tcl_WrongNumArgs(interp, 1, objv,
+				"option");
+		return TCL_ERROR;
+	}
+
+	if (Tcl_GetIndexFromObj(interp, objv[1],
+				optnames, "option", 0, &opt) != TCL_OK) {
+		return TCL_ERROR;
+	}
+
+	switch (opt) {
+		case OPT_QUERYTYPES:
+			break;
+		default:
+			break;
+	}
+
+	return Impl_CgetBackend(ImplClientData(clientData), interp, 0, 0);
 }
 
 #ifdef BUILD_sysdns
