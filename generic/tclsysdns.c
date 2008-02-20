@@ -14,7 +14,7 @@ typedef struct {
 	const char *b_name;             /* Backend name */
 	int b_caps;                     /* Backend capabilities */
 	const unsigned short *b_qtypes; /* QTYPEs supported by backend */
-	ClientData impldata;
+	ClientData impldata;            /* Backend-specific opaque state */
 } PkgInterpData;
 
 /* Accessor for the impldata field */
@@ -72,7 +72,6 @@ Sysdns_RefInterpData (
 	interpData = (PkgInterpData *) clientData;
 	++interpData->refcount;
 
-	/* return interpData->impldata; */
 	return interpData;
 }
 
@@ -322,15 +321,36 @@ Sysdns_Cget (
 	Tcl_Obj *const objv[]
 	)
 {
-	const char *optnames[] = {
-		"-querytypes",
-		NULL
-	};
 	typedef enum {
-		OPT_QUERYTYPES
+		OPT_QUERYTYPES = DBC_PRIMARY + 1
 	} cget_opts;
+	const char *optnames[] = {
+		"-rawresult",       /* DBC_RAWRESULT */
+		"-tcp",             /* DBC_TCP */
+		"-accepttruncated", /* DBC_TRUNCOK */
+		"-nocache",         /* DBC_NOCACHE */
+		"-nowire",          /* DBC_NOWIRE */
+		"-search",          /* DBC_SEARCH */
+		"-primarynsonly",   /* DBC_PRIMARY */
+		/* "Meta" options below */
+		"-querytypes",      /* OPT_QUERYTYPES */
+		NULL };
+	const int flagvalues[] = {
+		DBC_RAWRESULT,
+		DBC_TCP,
+		DBC_TRUNCOK,
+		DBC_NOCACHE,
+		DBC_NOWIRE,
+		DBC_SEARCH,
+		DBC_PRIMARY,
+		OPT_QUERYTYPES,
+	};
 
-	int opt;
+	PkgInterpData *interpData;
+
+	int opt, flag;
+
+	interpData = (PkgInterpData *) clientData;
 
 	if (objc != 2) {
 		Tcl_WrongNumArgs(interp, 1, objv,
@@ -343,14 +363,44 @@ Sysdns_Cget (
 		return TCL_ERROR;
 	}
 
-	switch (opt) {
+	flag = flagvalues[opt];
+	switch (flag) {
 		case OPT_QUERYTYPES:
-			break;
-		default:
-			break;
-	}
+		{
+			int i;
+			Tcl_Obj *listObj;
 
-	return Impl_CgetBackend(ImplClientData(clientData), interp, 0, 0);
+			listObj = Tcl_NewListObj(0, NULL);
+			i = 0;
+			while (1) {
+				if (interpData->b_qtypes[i] == 0) break;
+				Tcl_ListObjAppendElement(interp, listObj,
+						DNSQTypeIndexToMnemonic(interpData->b_qtypes[i]));
+				++i;
+			};
+			Tcl_SetObjResult(interp, listObj);
+			return TCL_OK;
+		}
+		default:
+		{
+			Tcl_Obj *resObj;
+
+			if (! (interpData->b_caps & flag)) {
+				Tcl_ResetResult(interp);
+				Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
+						"\": not supported by the DNS resolution backend", NULL);
+				return TCL_ERROR;
+			}
+
+			if (Impl_CgetBackend(ImplClientData(clientData), interp,
+					opt, &resObj) != TCL_OK) {
+				return TCL_ERROR;
+			} else {
+				Tcl_SetObjResult(interp, resObj);
+				return TCL_OK;
+			}
+		}
+	}
 }
 
 #ifdef BUILD_sysdns
