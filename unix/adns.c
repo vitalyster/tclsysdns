@@ -19,6 +19,7 @@
 typedef struct {
 	adns_state astate;
 	adns_queryflags qflags;
+	int opts;
 } InterpData;
 
 const adns_queryflags def_qflags = (adns_qf_quoteok_query
@@ -624,8 +625,25 @@ Impl_CgetBackend (
 	)
 {
 	InterpData *interpData;
+	int flag;
 
 	interpData = (InterpData *) clientData;
+
+	switch (option) {
+		case DBC_TCP:
+			flag = interpData->qflags & adns_qf_usevc;
+			break;
+		case DBC_SEARCH:
+			flag = interpData->qflags & adns_qf_search;
+			break;
+		default:
+			/* Never reached -- outer code checks
+			 * options against backend caps */
+			flag = 0;
+			break;
+	}
+
+	*resObjPtr = Tcl_NewBooleanObj(flag);
 
 	return TCL_OK;
 }

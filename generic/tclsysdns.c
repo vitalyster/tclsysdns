@@ -322,7 +322,8 @@ Sysdns_Cget (
 	)
 {
 	typedef enum {
-		OPT_QUERYTYPES = DBC_PRIMARY + 1
+		OPT_QUERYTYPES = 0xF00000 + 1,
+		OPT_BACKEND,
 	} cget_opts;
 	const char *optnames[] = {
 		"-rawresult",       /* DBC_RAWRESULT */
@@ -334,6 +335,7 @@ Sysdns_Cget (
 		"-primarynsonly",   /* DBC_PRIMARY */
 		/* "Meta" options below */
 		"-querytypes",      /* OPT_QUERYTYPES */
+		"-backend",         /* OPT_BACKEND */
 		NULL };
 	const int flagvalues[] = {
 		DBC_RAWRESULT,
@@ -344,6 +346,7 @@ Sysdns_Cget (
 		DBC_SEARCH,
 		DBC_PRIMARY,
 		OPT_QUERYTYPES,
+		OPT_BACKEND,
 	};
 
 	PkgInterpData *interpData;
@@ -381,6 +384,10 @@ Sysdns_Cget (
 			Tcl_SetObjResult(interp, listObj);
 			return TCL_OK;
 		}
+		case OPT_BACKEND:
+			Tcl_SetObjResult(interp,
+					Tcl_NewStringObj(interpData->b_name, -1));
+			return TCL_OK;
 		default:
 		{
 			Tcl_Obj *resObj;
@@ -393,7 +400,7 @@ Sysdns_Cget (
 			}
 
 			if (Impl_CgetBackend(ImplClientData(clientData), interp,
-					opt, &resObj) != TCL_OK) {
+					flag, &resObj) != TCL_OK) {
 				return TCL_ERROR;
 			} else {
 				Tcl_SetObjResult(interp, resObj);
