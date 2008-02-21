@@ -37,13 +37,20 @@
 /* DBC_NORECURSION ? -- don't request recursive processing on the server */
 /* DBC_STAYOPEN ? -- keep TCP connection open between queries */
 
+/* Information about a DNS resolution backend */
+typedef struct {
+	const char *name;             /* Backend proper name (like "ADNS") */
+	int caps;                     /* Backend capabilities */
+	const unsigned short *qtypes; /* Query types supported by the backend */
+} BackendInfo;
+
+void
+Impl_GetBackendInfo (BackendInfo *binfo);
+
 int
 Impl_Init (
 	Tcl_Interp *interp,
-	ClientData *clientDataPtr,
-	const char **namePtr,
-	int *capsPtr,
-	const unsigned short **qtypesPtr);
+	ClientData *clientDataPtr);
 
 void
 Impl_Cleanup (

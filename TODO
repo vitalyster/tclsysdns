@@ -2,24 +2,14 @@ $Id$
 
 HIGH:
 
-* Holding of "impl interp data" is broken in tclsysdns -- only
-  impl data is really passed around so the top-level commands
-  cannot have their own state.
-  The solution is:
-  * PkgInterpData is passed around.
-  * A macro is provided for convenient extraction of impl
-    interp data if needed.
+* Implement creation of option mapping tables for [cget] and
+  [configure] in Sysdns_PkgInit(). 
+  Adjust Sysdns_Cget() and Sysdns_Configure() to use these
+  tables.
 
-* Introduce Impl_ style functions which should return a list
-  of supported RRs. The front-end resolving command proc should
+* The front-end resolving command proc should
   refuse to proceceed with unsupported RR unless -rawresult
   is also supplied (and supported by the backend).
-
-  This probably requires defining a set of own macros for
-  RR type numbers, like SYSDNS_RRTYPE_A, etc.
-  An implementation of querying method should probably return
-  a pointer to a (static) array containing a list of supported
-  RRs + the length of this array.
 
 * Factor out some DNS message parsing bits from unix/dnsmsg.c
   and unix/lwres.c (namely, generation of POSIX errors, parsing
@@ -27,10 +17,6 @@ HIGH:
   Also some way of consistent reporting of common errors (such
   as the premature message length while parsing a (part of) raw
   DNS message).
-
-* Think of implementing a way for run-time augmenting lists of
-  possible options for [::sydns::*] (at init stage) by those
-  offerred by the backend.
 
 * (adns) Check whether ADNS sets errno on errors or just returns
   its "would have been" value.
@@ -44,10 +30,6 @@ HIGH:
 * (adns) Factor out some bits of error code / result settings.
   Probably this should be generalized to the whole DNS
   subsystem.
-
-* Implement [configure] method.
-
-* Implement [cget] method.
 
 * Implement "-raw" format option for [resolve]. This implies
   checking for the OS version on Windows (which should

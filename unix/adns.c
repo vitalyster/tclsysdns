@@ -25,9 +25,22 @@ typedef struct {
 const adns_queryflags def_qflags = (adns_qf_quoteok_query
 		| adns_qf_quoteok_anshost | adns_qf_owner);
 
+/* Must be kept in sync with a table in AdnsNormalizeQueryType() */
 static unsigned short
 SupportedQTypes[] = {
-	SYSDNS_TYPE_A,
+	adns_r_a,
+	adns_r_ns_raw,
+	adns_r_cname,
+	adns_r_soa_raw,
+	adns_r_ptr_raw,
+	adns_r_hinfo,
+	adns_r_mx_raw,
+	adns_r_txt,
+	adns_r_rp_raw,
+	adns_r_srv_raw,
+	/* Below are types that are not directly supported by ADNS */
+	SYSDNS_TYPE_AAAA,
+	SYSDNS_TYPE_NULL,
 	0
 };
 
@@ -83,13 +96,20 @@ AdnsInit (
 	return TCL_OK;
 }
 
+void
+Impl_GetBackendInfo (
+	BackendInfo *binfo
+	)
+{
+	binfo->name   = "ADNS";
+	binfo->caps   = DBC_DEFAULTS | DBC_TCP | DBC_SEARCH;
+	binfo->qtypes = SupportedQTypes;
+}
+
 int
 Impl_Init (
 	Tcl_Interp *interp,
-	ClientData *clientDataPtr,
-	const char **namePtr,
-	int *capsPtr,
-	const unsigned short **qtypesPtr
+	ClientData *clientDataPtr
 	)
 {
 	adns_state st;
@@ -104,10 +124,6 @@ Impl_Init (
 	dataPtr->qflags = def_qflags;
 
 	*clientDataPtr = (ClientData) dataPtr;
-
-	*namePtr = "ADNS";
-	*capsPtr = DBC_DEFAULTS | DBC_TCP | DBC_SEARCH;
-	*qtypesPtr = SupportedQTypes;
 
 	return TCL_OK;
 }

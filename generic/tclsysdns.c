@@ -9,19 +9,49 @@
 #include "tclsysdns.h"
 #include "dnsparams.h"
 
+/* Package-global (library-global) data.
+ * Initialized only once per actual loading of the library's code into memory. */
 typedef struct {
-	int refcount;
+	int initialized;
+
 	const char *b_name;             /* Backend name */
 	int b_caps;                     /* Backend capabilities */
 	const unsigned short *b_qtypes; /* QTYPEs supported by backend */
+} PackageData;
+
+static PackageData pkgData;
+
+/* Package-related per-interp data.
+ * One instance of it is initialized for each interp loading this package
+ * and it's passed around to the package's command procs as their clientData. */
+typedef struct {
+	int refcount;
 	ClientData impldata;            /* Backend-specific opaque state */
 } PkgInterpData;
 
 /* Accessor for the impldata field */
 #define ImplClientData(p) ( ((PkgInterpData *) p)->impldata )
 
+static void
+Sysdns_PkgInit (void)
+{
+	if (! pkgData.initialized) {
+		BackendInfo bi;
+
+		Impl_GetBackendInfo(&bi);
+
+		pkgData.b_name   = bi.name;
+		pkgData.b_caps   = bi.caps;
+		pkgData.b_qtypes = bi.qtypes;
+
+		/* TODO create option mapping tables for [configure] and [cget] */
+
+		pkgData.initialized = 1;
+	}
+}
+
 static int
-Sysdns_PkgInit (
+Sysdns_InterpInit (
 	Tcl_Interp *interp,
 	ClientData *clientDataPtr
 	)
@@ -30,11 +60,7 @@ Sysdns_PkgInit (
 
 	interpData = (PkgInterpData *) ckalloc(sizeof(PkgInterpData));
 
-	if (Impl_Init(interp,
-				&(interpData->impldata),
-				&(interpData->b_name),
-				&(interpData->b_caps),
-				&(interpData->b_qtypes)) != TCL_OK) {
+	if (Impl_Init(interp, &(interpData->impldata)) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
@@ -276,10 +302,8 @@ Sysdns_Configure (
 		DBC_PRIMARY
 	};
 
-	PkgInterpData *interpData;
 	int opt, i, flags;
 
-	interpData = (PkgInterpData *) clientData;
 	flags = 0;
 
 	for (i = 1; i < objc; ++i) {
@@ -292,7 +316,7 @@ Sysdns_Configure (
 
 		flag = flagvalues[opt];
 
-		if (interpData->b_caps & flag) {
+		if (pkgData.b_caps & flag) {
 			flags |= flag;
 		} else {
 			Tcl_ResetResult(interp);
@@ -349,11 +373,7 @@ Sysdns_Cget (
 		OPT_BACKEND,
 	};
 
-	PkgInterpData *interpData;
-
 	int opt, flag;
-
-	interpData = (PkgInterpData *) clientData;
 
 	if (objc != 2) {
 		Tcl_WrongNumArgs(interp, 1, objv,
@@ -376,9 +396,9 @@ Sysdns_Cget (
 			listObj = Tcl_NewListObj(0, NULL);
 			i = 0;
 			while (1) {
-				if (interpData->b_qtypes[i] == 0) break;
+				if (pkgData.b_qtypes[i] == 0) break;
 				Tcl_ListObjAppendElement(interp, listObj,
-						DNSQTypeIndexToMnemonic(interpData->b_qtypes[i]));
+						DNSQTypeIndexToMnemonic(pkgData.b_qtypes[i]));
 				++i;
 			};
 			Tcl_SetObjResult(interp, listObj);
@@ -386,13 +406,13 @@ Sysdns_Cget (
 		}
 		case OPT_BACKEND:
 			Tcl_SetObjResult(interp,
-					Tcl_NewStringObj(interpData->b_name, -1));
+					Tcl_NewStringObj(pkgData.b_name, -1));
 			return TCL_OK;
 		default:
 		{
 			Tcl_Obj *resObj;
 
-			if (! (interpData->b_caps & flag)) {
+			if (! (pkgData.b_caps & flag)) {
 				Tcl_ResetResult(interp);
 				Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
 						"\": not supported by the DNS resolution backend", NULL);
@@ -429,7 +449,9 @@ Sysdns_Init(Tcl_Interp * interp)
 		return TCL_ERROR;
 	}
 
-	if (Sysdns_PkgInit(interp, &pkgInterpData) != TCL_OK) {
+	Sysdns_PkgInit();
+
+	if (Sysdns_InterpInit(interp, &pkgInterpData) != TCL_OK) {
 		return TCL_ERROR;
 	}
 
