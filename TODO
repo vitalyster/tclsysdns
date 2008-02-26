@@ -2,10 +2,18 @@ $Id$
 
 HIGH:
 
-* Implement creation of option mapping tables for [cget] and
-  [configure] in Sysdns_PkgInit(). 
-  Adjust Sysdns_Cget() and Sysdns_Configure() to use these
-  tables.
+* Rework Impl_ConfigureBackend so that it accepts just one
+  capability value and (possibly) one argument (flag) for it
+  (except for -defaults).
+  Adjust Sysdns_Configure() to use this strategy.
+
+* Split Sysdns_Configure() into two procs to make it manageable.
+
+* Rework Impl_CgetBackend() so that it also returns the default
+  value for the capability passed to it.
+
+* Fix Sysdns_Configure() logic. This plays badly with -defaults
+  though.
 
 * The front-end resolving command proc should
   refuse to proceceed with unsupported RR unless -rawresult

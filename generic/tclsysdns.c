@@ -9,6 +9,11 @@
 #include "tclsysdns.h"
 #include "dnsparams.h"
 
+typedef struct {
+	const char *opt;
+	int val;
+} opt_val_t;
+
 /* Package-global (library-global) data.
  * Initialized only once per actual loading of the library's code into memory. */
 typedef struct {
@@ -17,6 +22,16 @@ typedef struct {
 	const char *b_name;             /* Backend name */
 	int b_caps;                     /* Backend capabilities */
 	const unsigned short *b_qtypes; /* QTYPEs supported by backend */
+
+	struct {
+		const char **olist;
+		int *omap;
+	} conf;
+
+	struct {
+		const char **olist;
+		int *omap;
+	} cget;
 } PackageData;
 
 static PackageData pkgData;
@@ -32,6 +47,121 @@ typedef struct {
 /* Accessor for the impldata field */
 #define ImplClientData(p) ( ((PkgInterpData *) p)->impldata )
 
+typedef enum {
+	OPT_QUERYTYPES = __DBC_MAX + 1,
+	OPT_BACKEND,
+} cget_opt_t;
+
+const opt_val_t ConfOptMap[] = {
+	{NULL, 0}
+};
+
+const opt_val_t CgetOptMap[] = {
+	{"-querytypes", OPT_QUERYTYPES},
+	{"-backend",    OPT_BACKEND},
+	{NULL,          0}
+};
+
+static void
+CreateOptionMaps (
+	const int caps,
+	const opt_val_t mconf[],
+	const opt_val_t mcget[]
+	)
+{
+	dns_backend_cap_t c;
+	int ncap, nconf, ncget, si, di, base;
+
+	/* Calculate sizes for tables */
+
+	for (ncap = 0, c = __DBC_MIN; c <= __DBC_MAX; c <<= 1) {
+		if (caps & c) ++ncap;
+	}
+
+	si = 0;
+	nconf = ncap;
+	while (mconf[si].opt != NULL) { ++nconf; ++si; }
+
+	si = 0;
+	ncget = ncap;
+	while (mcget[si].opt != NULL) { ++ncget; ++si; }
+
+	/* Allocate option lists and option maps */
+
+	/* These lables are one element longer to keep the NULL-terminator */
+	pkgData.conf.olist = (const char **) ckalloc(sizeof(const char*) * (nconf + 1));
+	pkgData.cget.olist = (const char **) ckalloc(sizeof(const char*) * (ncget + 1));
+
+	pkgData.conf.omap = (int *) ckalloc(sizeof(int) * nconf);
+	pkgData.cget.omap = (int *) ckalloc(sizeof(int) * ncget);
+
+	/* Populate option lists and maps */
+
+	di = 0;
+
+	for (si = 0, c = __DBC_MIN; c <= __DBC_MAX; c <<= 1) {
+		const char *opt;
+
+		if (caps & c) {
+			switch (c) {
+				case DBC_DEFAULTS:  opt = "-defaults";
+									break;
+				case DBC_RAWRESULT: opt = "-rawresult";
+									break;
+				case DBC_TCP:       opt = "-tcp";
+									break;
+				case DBC_TRUNCOK:   opt = "-accepttruncated";
+									break;
+				case DBC_NOCACHE:   opt = "-nocache";
+									break;
+				case DBC_NOWIRE:    opt = "-nowire";
+									break;
+				case DBC_SEARCH:    opt = "-search";
+									break;
+				case DBC_PRIMARY:   opt = "-primarydnsonly";
+									break;
+			}
+
+			pkgData.conf.olist[di] = opt;
+			pkgData.conf.omap[di]  = c;
+
+			pkgData.cget.olist[di] = opt;
+			pkgData.cget.omap[di]  = c;
+
+			++di;
+		}
+	}
+
+	base = di;
+
+	si = 0;
+	while (mconf[si].opt != NULL) {
+		pkgData.conf.olist[di] = mconf[si].opt;
+		pkgData.conf.omap[di]  = mconf[si].val;
+		++si; ++di;
+	}
+	pkgData.conf.olist[di] = NULL; /* NULL-terminator */
+
+	si = 0;
+	di = base;
+	while (mcget[si].opt != NULL) {
+		pkgData.cget.olist[di] = mcget[si].opt;
+		pkgData.cget.omap[di]  = mcget[si].val;
+		++si; ++di;
+	}
+	pkgData.cget.olist[di] = NULL; /* NULL-terminator */
+}
+
+static void
+FreeOptionMaps (void)
+{
+	ckfree((char *) pkgData.conf.olist);
+	ckfree((char *) pkgData.conf.omap);
+
+	ckfree((char *) pkgData.cget.olist);
+	ckfree((char *) pkgData.cget.omap);
+}
+
 static void
 Sysdns_PkgInit (void)
 {
@@ -44,7 +174,7 @@ Sysdns_PkgInit (void)
 		pkgData.b_caps   = bi.caps;
 		pkgData.b_qtypes = bi.qtypes;
 
-		/* TODO create option mapping tables for [configure] and [cget] */
+		CreateOptionMaps(bi.caps, ConfOptMap, CgetOptMap);
 
 		pkgData.initialized = 1;
 	}
@@ -281,60 +411,108 @@ Sysdns_Configure (
 	Tcl_Obj *const objv[]
 	)
 {
-	const char *optnames[] = {
-		"-defaults",        /* DBC_DEFAULTS */
-		"-rawresult",       /* DBC_RAWRESULT */
-		"-tcp",             /* DBC_TCP */
-		"-accepttruncated", /* DBC_TRUNCOK */
-		"-nocache",         /* DBC_NOCACHE */
-		"-nowire",          /* DBC_NOWIRE */
-		"-search",          /* DBC_SEARCH */
-		"-primarynsonly",   /* DBC_PRIMARY */
-		NULL };
-	const int flagvalues[] = {
-		DBC_DEFAULTS,
-		DBC_RAWRESULT,
-		DBC_TCP,
-		DBC_TRUNCOK,
-		DBC_NOCACHE,
-		DBC_NOWIRE,
-		DBC_SEARCH,
-		DBC_PRIMARY
-	};
+	const char **optnames;
+	const int *flagvalues;
 
-	int opt, i, flags;
+	optnames   = pkgData.conf.olist;
+	flagvalues = pkgData.conf.omap;
 
-	flags = 0;
+	if (objc == 1) { /* "Read all" mode -- return a list of all settings */
+		int i;
+		const char *optname;
+		Tcl_Obj *resObj;
 
-	for (i = 1; i < objc; ++i) {
-		int flag;
+		resObj = Tcl_NewListObj(0, NULL);
+		i = 0;
+		while (1) {
+			Tcl_Obj *flagObj;
 
-		if (Tcl_GetIndexFromObj(interp, objv[i],
-					optnames, "option", 0, &opt) != TCL_OK) {
-			return TCL_ERROR;
+			optname = optnames[i];
+			if (optname == NULL) break;
+
+			Tcl_ListObjAppendElement(interp, resObj,
+					Tcl_NewStringObj(optname, -1));
+			/* TODO implement getting default values */
+			if (Impl_CgetBackend(ImplClientData(clientData), interp,
+					flagvalues[i], &flagObj) != TCL_OK) {
+				Tcl_DecrRefCount(resObj);
+				return TCL_ERROR;
+			}
+			Tcl_ListObjAppendElement(interp, resObj, flagObj);
+
+			++i;
 		}
 
-		flag = flagvalues[opt];
+		Tcl_SetObjResult(interp, resObj);
+		return TCL_OK;
+	} else { /* Write mode -- process arguments */
+		typedef enum {
+			PMODE_OPTION,
+			PMODE_VALUE
+		} parse_mode;
 
-		if (pkgData.b_caps & flag) {
-			flags |= flag;
-		} else {
-			Tcl_ResetResult(interp);
-			Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
-					"\": not supported by the DNS resolution backend", NULL);
-			return TCL_ERROR;
+		int i, flags;
+		parse_mode mode;
+
+		flags = 0;
+		mode  = PMODE_OPTION;
+
+		for (i = 1; i < objc;) {
+			int flag, opt, val;
+
+			switch (mode) {
+				case PMODE_OPTION:
+					if (Tcl_GetIndexFromObj(interp, objv[i],
+								optnames, "option", 0, &opt) != TCL_OK) {
+						return TCL_ERROR;
+					}
+
+					flag = flagvalues[opt];
+
+					if (pkgData.b_caps & flag) {
+						if (flag != DBC_DEFAULTS) {
+							if (i == objc - 1) {
+								Tcl_ResetResult(interp);
+								Tcl_AppendResult(interp, "Option \"", optnames[opt],
+										"\" requires an argument", NULL);
+								return TCL_ERROR;
+							}
+							mode = PMODE_VALUE;
+						}
+					} else {
+						Tcl_ResetResult(interp);
+						Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
+								"\": not supported by the DNS resolution backend", NULL);
+						return TCL_ERROR;
+					}
+
+					++i;
+					break;
+				case PMODE_VALUE:
+					if (Tcl_GetBooleanFromObj(interp, objv[i], &val) != TCL_OK) {
+						return TCL_ERROR;
+					}
+					/* TODO rework this */
+					if (val) {
+						flags |= flag;
+					}
+					mode = PMODE_OPTION;
+					++i;
+
+					break;
+			}
 		}
+
+		if (flags & DBC_DEFAULTS) {
+			if (flags & ~DBC_DEFAULTS) {
+				Tcl_SetObjResult(interp, Tcl_NewStringObj("Option \"-defaults\" "
+							"cannot be combined with other options", -1));
+				return TCL_ERROR;
+			}
+		}
+
+		return Impl_ConfigureBackend(ImplClientData(clientData), interp, flags);
 	}
-
-	if (flags & DBC_DEFAULTS) {
-		if (flags & ~DBC_DEFAULTS) {
-			Tcl_SetObjResult(interp, Tcl_NewStringObj("Option \"-defaults\" "
-						"cannot be combined with other options", -1));
-			return TCL_ERROR;
-		}
-	}
-
-	return Impl_ConfigureBackend(ImplClientData(clientData), interp, flags);
 }
 
 static int
@@ -345,35 +523,12 @@ Sysdns_Cget (
 	Tcl_Obj *const objv[]
 	)
 {
-	typedef enum {
-		OPT_QUERYTYPES = 0xF00000 + 1,
-		OPT_BACKEND,
-	} cget_opts;
-	const char *optnames[] = {
-		"-rawresult",       /* DBC_RAWRESULT */
-		"-tcp",             /* DBC_TCP */
-		"-accepttruncated", /* DBC_TRUNCOK */
-		"-nocache",         /* DBC_NOCACHE */
-		"-nowire",          /* DBC_NOWIRE */
-		"-search",          /* DBC_SEARCH */
-		"-primarynsonly",   /* DBC_PRIMARY */
-		/* "Meta" options below */
-		"-querytypes",      /* OPT_QUERYTYPES */
-		"-backend",         /* OPT_BACKEND */
-		NULL };
-	const int flagvalues[] = {
-		DBC_RAWRESULT,
-		DBC_TCP,
-		DBC_TRUNCOK,
-		DBC_NOCACHE,
-		DBC_NOWIRE,
-		DBC_SEARCH,
-		DBC_PRIMARY,
-		OPT_QUERYTYPES,
-		OPT_BACKEND,
-	};
-
+	const char **optnames;
+	const int *flagvalues;
 	int opt, flag;
+
+	optnames   = pkgData.cget.olist;
+	flagvalues = pkgData.cget.omap;
 
 	if (objc != 2) {
 		Tcl_WrongNumArgs(interp, 1, objv,
