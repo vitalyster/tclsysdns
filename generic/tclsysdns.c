@@ -6,6 +6,7 @@
  */
 
 #include <tcl.h>
+#include <string.h>
 #include "tclsysdns.h"
 #include "dnsparams.h"
 
@@ -22,6 +23,7 @@ typedef struct {
 	const char *b_name;             /* Backend name */
 	int b_caps;                     /* Backend capabilities */
 	const unsigned short *b_qtypes; /* QTYPEs supported by backend */
+	int b_ncaps;                    /* Number of caps supported by backend */
 
 	struct {
 		const char **olist;
@@ -77,6 +79,8 @@ CreateOptionMaps (
 	for (ncap = 0, c = __DBC_MIN; c <= __DBC_MAX; c <<= 1) {
 		if (caps & c) ++ncap;
 	}
+
+	pkgData.b_ncaps = ncap;
 
 	si = 0;
 	nconf = ncap;
@@ -404,7 +408,7 @@ Sysdns_Reinit (
 }
 
 static int
-Sysdns_Configure (
+Configure_GetAll (
 	ClientData clientData,
 	Tcl_Interp *interp,
 	int objc,
@@ -412,106 +416,188 @@ Sysdns_Configure (
 	)
 {
 	const char **optnames;
+	const char *optname;
 	const int *flagvalues;
+	int i;
+	Tcl_Obj *resObj;
 
 	optnames   = pkgData.conf.olist;
 	flagvalues = pkgData.conf.omap;
 
-	if (objc == 1) { /* "Read all" mode -- return a list of all settings */
-		int i;
-		const char *optname;
-		Tcl_Obj *resObj;
+	resObj = Tcl_NewListObj(0, NULL);
+	i = 0;
+	while (1) {
+		Tcl_Obj *flagObj;
 
-		resObj = Tcl_NewListObj(0, NULL);
-		i = 0;
-		while (1) {
-			Tcl_Obj *flagObj;
+		optname = optnames[i];
+		if (optname == NULL) break;
 
-			optname = optnames[i];
-			if (optname == NULL) break;
-
-			Tcl_ListObjAppendElement(interp, resObj,
-					Tcl_NewStringObj(optname, -1));
-			/* TODO implement getting default values */
-			if (Impl_CgetBackend(ImplClientData(clientData), interp,
-					flagvalues[i], &flagObj) != TCL_OK) {
-				Tcl_DecrRefCount(resObj);
-				return TCL_ERROR;
-			}
-			Tcl_ListObjAppendElement(interp, resObj, flagObj);
-
-			++i;
+		Tcl_ListObjAppendElement(interp, resObj,
+				Tcl_NewStringObj(optname, -1));
+		/* TODO implement getting default values */
+		if (Impl_CgetBackend(ImplClientData(clientData), interp,
+				flagvalues[i], &flagObj) != TCL_OK) {
+			Tcl_DecrRefCount(resObj);
+			return TCL_ERROR;
 		}
+		Tcl_ListObjAppendElement(interp, resObj, flagObj);
 
-		Tcl_SetObjResult(interp, resObj);
-		return TCL_OK;
-	} else { /* Write mode -- process arguments */
-		typedef enum {
-			PMODE_OPTION,
-			PMODE_VALUE
-		} parse_mode;
+		++i;
+	}
 
-		int i, flags;
-		parse_mode mode;
+	Tcl_SetObjResult(interp, resObj);
+	return TCL_OK;
+}
 
-		flags = 0;
-		mode  = PMODE_OPTION;
+static int
+Configure_Set (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	int objc,
+	Tcl_Obj *const objv[]
+	)
+{
+	typedef enum {
+		PMODE_OPTION,
+		PMODE_VALUE,
+	} parse_mode;
 
-		for (i = 1; i < objc;) {
-			int flag, opt, val;
+	typedef enum {
+		RRES_OK,
+		RRES_ERROR,
+		RRES_DEFCONFLICT,
+	} round_result_t;
 
-			switch (mode) {
-				case PMODE_OPTION:
-					if (Tcl_GetIndexFromObj(interp, objv[i],
-								optnames, "option", 0, &opt) != TCL_OK) {
-						return TCL_ERROR;
-					}
+	typedef struct {
+		int set;
+		dns_backend_cap_t cap;
+		int val;
+	} cap_val_t;
 
-					flag = flagvalues[opt];
+	const char **optnames;
+	const int *flagvalues;
+	int i, len, nopts, seendef, opt;
+	parse_mode mode;
+	round_result_t res;
+	cap_val_t *fvec;
 
-					if (pkgData.b_caps & flag) {
-						if (flag != DBC_DEFAULTS) {
-							if (i == objc - 1) {
-								Tcl_ResetResult(interp);
-								Tcl_AppendResult(interp, "Option \"", optnames[opt],
-										"\" requires an argument", NULL);
-								return TCL_ERROR;
+	optnames   = pkgData.conf.olist;
+	flagvalues = pkgData.conf.omap;
+
+	len  = sizeof(cap_val_t) * pkgData.b_ncaps;
+	fvec = (cap_val_t *) ckalloc(len);
+	memset(fvec, 0, len);
+
+	nopts   = 0;
+	seendef = 0;
+	mode    = PMODE_OPTION;
+
+	for (i = 1; i < objc; ) {
+		int cap, val;
+
+		res = RRES_OK;
+
+		switch (mode) {
+			case PMODE_OPTION:
+				if (Tcl_GetIndexFromObj(interp, objv[i],
+							optnames, "option", 0, &opt) != TCL_OK) {
+					res = RRES_ERROR;
+					break;
+				}
+
+				cap = flagvalues[opt];
+
+				if (pkgData.b_caps & cap) {
+					if (cap != DBC_DEFAULTS) {
+						if (i == objc - 1) {
+							Tcl_ResetResult(interp);
+							Tcl_AppendResult(interp, "Option \"", optnames[opt],
+									"\" requires an argument", NULL);
+							res = RRES_ERROR;
+							break;
+						} else {
+							if (seendef) {
+								res = RRES_DEFCONFLICT;
+								break;
 							}
-							mode = PMODE_VALUE;
 						}
+						fvec[opt].set = 1;
+						fvec[opt].cap = cap;
+						mode = PMODE_VALUE;
 					} else {
-						Tcl_ResetResult(interp);
-						Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
-								"\": not supported by the DNS resolution backend", NULL);
-						return TCL_ERROR;
+						if (nopts > 0) {
+							res = RRES_DEFCONFLICT;
+							break;
+						}
+						seendef = 1;
 					}
-
-					++i;
+				} else {
+					/* TODO do we need this? It should never occur now
+					 * since the list of available options matches the
+					 * backend caps */
+					Tcl_ResetResult(interp);
+					Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
+							"\": not supported by the DNS resolution backend", NULL);
+					res = RRES_ERROR;
 					break;
-				case PMODE_VALUE:
-					if (Tcl_GetBooleanFromObj(interp, objv[i], &val) != TCL_OK) {
-						return TCL_ERROR;
-					}
-					/* TODO rework this */
-					if (val) {
-						flags |= flag;
-					}
-					mode = PMODE_OPTION;
-					++i;
+				}
 
+				++i;
+				break;
+
+			case PMODE_VALUE:
+				if (Tcl_GetBooleanFromObj(interp, objv[i], &val) != TCL_OK) {
+					res = RRES_ERROR;
 					break;
-			}
+				}
+
+				fvec[opt].val = val;
+				++nopts;
+				mode = PMODE_OPTION;
+
+				++i;
+				break;
 		}
 
-		if (flags & DBC_DEFAULTS) {
-			if (flags & ~DBC_DEFAULTS) {
+		switch (res) {
+			case RRES_OK:
+				break;
+			case RRES_DEFCONFLICT:
 				Tcl_SetObjResult(interp, Tcl_NewStringObj("Option \"-defaults\" "
 							"cannot be combined with other options", -1));
+				/* falls through */
+			case RRES_ERROR:
+				ckfree((char *) fvec);
+				return TCL_ERROR;
+		}
+	}
+
+	for (i = 0; i < pkgData.b_ncaps; ++i) {
+		if (fvec[i].set) {
+			if (Impl_ConfigureBackend(ImplClientData(clientData),
+						interp, fvec[i].cap) != TCL_OK) {
+				ckfree((char *) fvec);
 				return TCL_ERROR;
 			}
 		}
+	}
 
-		return Impl_ConfigureBackend(ImplClientData(clientData), interp, flags);
+	ckfree((char *) fvec);
+	return TCL_OK;
+}
+
+static int
+Sysdns_Configure (
+	ClientData clientData,
+	Tcl_Interp *interp,
+	int objc,
+	Tcl_Obj *const objv[]
+	)
+{
+	if (objc == 1) {
+		return Configure_GetAll(clientData, interp, objc, objv);
+	} else {
+		return Configure_Set(clientData, interp, objc, objv);
 	}
 }
 

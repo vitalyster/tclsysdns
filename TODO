@@ -7,13 +7,13 @@ HIGH:
   (except for -defaults).
   Adjust Sysdns_Configure() to use this strategy.
 
-* Split Sysdns_Configure() into two procs to make it manageable.
-
 * Rework Impl_CgetBackend() so that it also returns the default
   value for the capability passed to it.
 
-* Fix Sysdns_Configure() logic. This plays badly with -defaults
-  though.
+* Make Impl_CgetBackend() to return sensible boolean value
+  when asked about "defaults" capability -- it should true
+  iff the current set of options is the default,
+  false otherwise.
 
 * The front-end resolving command proc should
   refuse to proceceed with unsupported RR unless -rawresult
@@ -91,6 +91,8 @@ NORMAL:
   and provide an "event source").
 
 LOW:
+
+* Simplify Configure_GetAll() logic.
 
 * Think of defining an "incomplete type" for the "interp
   data" concept in tclsysdns.h + change the definition
