@@ -45,6 +45,10 @@
 /* Default resolver options */
 #define RES_DEFOPTS (DNS_QUERY_STANDARD | DNS_QUERY_DONT_RESET_TTL_VALUES)
 
+typedef struct {
+	DWORD res_opts;
+} InterpData;
+
 static const unsigned short
 SupportedQTypes[] = {
 	DNS_TYPE_A,
@@ -165,17 +169,23 @@ AppendSystemError(
 	}
 }
 
-typedef struct {
-	DWORD res_opts;
-} InterpData;
+void
+Impl_GetBackendInfo (
+	BackendInfo *binfo
+	)
+{
+	binfo->name   = "Windows native";
+	binfo->caps   = (DBC_DEFAULTS | DBC_RAWRESULT |
+			DBC_TCP | DBC_TRUNCOK |
+			DBC_NOCACHE | DBC_NOWIRE |
+			DBC_SEARCH);
+	binfo->qtypes = SupportedQTypes;
+}
 
 int
 Impl_Init (
 	Tcl_Interp *interp,
-	ClientData *clientDataPtr,
-	const char **namePtr,
-	int *capsPtr,
-	const unsigned short **qtypesPtr
+	ClientData *clientDataPtr
 	)
 {
 	InterpData *interpData;
@@ -184,12 +194,6 @@ Impl_Init (
 	interpData->res_opts = RES_DEFOPTS;
 
 	*clientDataPtr = (ClientData) interpData;
-
-	*namePtr = "Windows native";
-	*capsPtr = (DBC_RAWRESULT | DBC_TCP | DBC_TRUNCOK |
-			DBC_NOCACHE | DBC_NOWIRE |
-			DBC_SEARCH | DBC_PRIMARY);
-	*qtypesPtr = SupportedQTypes;
 
 	return TCL_OK;
 }
@@ -630,9 +634,45 @@ int
 Impl_ConfigureBackend (
 	ClientData clientData,
 	Tcl_Interp *interp,
-	const int options
+	const dns_backend_cap_t cap,
+	const int val
 	)
 {
+	InterpData *interpData;
+	int flag;
+
+	interpData = (InterpData *) clientData;
+
+	switch (cap) {
+		case DBC_DEFAULTS:
+			interpData->res_opts = RES_DEFOPTS;
+			return TCL_OK;
+		case DBC_RAWRESULT:
+			flag = DNS_QUERY_RETURN_MESSAGE;
+			break;
+		case DBC_TCP:
+			flag = DNS_QUERY_USE_TCP_ONLY;
+			break;
+		case DBC_TRUNCOK:
+			flag = DNS_QUERY_ACCEPT_TRUNCATED_RESPONSE;
+			break;
+		case DBC_NOCACHE:
+			flag = DNS_QUERY_BYPASS_CACHE;
+			break;
+		case DBC_NOWIRE:
+			flag = DNS_QUERY_CACHE_ONLY;
+			break;
+		case DBC_SEARCH:
+			flag = ~DNS_QUERY_TREAT_AS_FQDN;
+			break;
+	}
+
+	if (val) {
+		interpData->res_opts |= flag;
+	} else {
+		interpData->res_opts |= ~flag;
+	}
+
 	return TCL_OK;
 }
 
@@ -640,10 +680,38 @@ int
 Impl_CgetBackend (
 	ClientData clientData,
 	Tcl_Interp *interp,
-	const int option,
+	const int cap,
 	Tcl_Obj **resObjPtr
 	)
 {
+	InterpData *interpData;
+	int flag;
+
+	interpData = (InterpData *) clientData;
+
+	switch (cap) {
+		case DBC_RAWRESULT:
+			flag = DNS_QUERY_RETURN_MESSAGE;
+			break;
+		case DBC_TCP:
+			flag = DNS_QUERY_USE_TCP_ONLY;
+			break;
+		case DBC_TRUNCOK:
+			flag = DNS_QUERY_ACCEPT_TRUNCATED_RESPONSE;
+			break;
+		case DBC_NOCACHE:
+			flag = DNS_QUERY_BYPASS_CACHE;
+			break;
+		case DBC_NOWIRE:
+			flag = DNS_QUERY_CACHE_ONLY;
+			break;
+		case DBC_SEARCH:
+			flag = ~DNS_QUERY_TREAT_AS_FQDN;
+			break;
+	}
+
+	*resObjPtr = Tcl_NewBooleanObj(interpData->res_opts & flag);
+
 	return TCL_OK;
 }
 

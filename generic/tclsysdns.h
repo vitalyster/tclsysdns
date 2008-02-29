@@ -25,16 +25,6 @@
 #define REINIT_RESETOPTS 1   /* reset resolver options */
 
 /* Capabilities of DNS resolution backends */
-# if 0
-#define DBC_DEFAULTS   1  /* Reset configuration to defaults. Cannot be combined */
-#define DBC_RAWRESULT  2  /* Return raw DNS message as a query result */
-#define DBC_TCP        4  /* Use TCP, don't try UDP first */
-#define DBC_TRUNCOK    8  /* Accept truncated results, don't retry with TCP */
-#define DBC_NOCACHE   16  /* Bypass local cache */
-#define DBC_NOWIRE    32  /* Look at local cache only */
-#define DBC_SEARCH    64  /* Use search lists (search unqualified names in defined domains) */
-#define DBC_PRIMARY  128  /* Use only primary DNS */
-#else
 typedef enum {
 	DBC_DEFAULTS   = 1,    /* Reset configuration to defaults. Cannot be combined */
 	DBC_RAWRESULT  = 2,    /* Return raw DNS message as a query result */
@@ -47,7 +37,6 @@ typedef enum {
 	__DBC_MIN      = DBC_DEFAULTS,
 	__DBC_MAX      = DBC_PRIMARY
 } dns_backend_cap_t;
-#endif
 /* DBC_DEFDOMAIN ? -- append default domain */
 /* DBC_NORECURSION ? -- don't request recursive processing on the server */
 /* DBC_STAYOPEN ? -- keep TCP connection open between queries */
@@ -95,7 +84,8 @@ int
 Impl_ConfigureBackend (
 	ClientData clientData,
 	Tcl_Interp *interp,
-	const int options);
+	const dns_backend_cap_t cap,
+	const int val);
 
 int
 Impl_CgetBackend (

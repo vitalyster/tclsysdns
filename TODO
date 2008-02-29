@@ -2,10 +2,26 @@ $Id$
 
 HIGH:
 
-* Rework Impl_ConfigureBackend so that it accepts just one
-  capability value and (possibly) one argument (flag) for it
-  (except for -defaults).
-  Adjust Sysdns_Configure() to use this strategy.
+* Fix this issue:
+% ::sysdns::configure -nowire 1
+% ::sysdns::configure -nowire 1 -nocache 0
+% ::sysdns::configure -nowire 1 -nocache 0 -nowire 1
+% ::sysdns::configure -nowire 1 -nocache 0 -nowire 1 -nocache 1
+Options -nocache and -nowire cannot be used together
+% ::sysdns::configure -nowire 1 -nocache 0 -nowire 1 -nocache 0
+% ::sysdns::configure
+  (Looks like we should only increase the index variable when
+  the option being processed hasn't already been "seen").
+  Also see the next entry.
+
+* Think of reimplementing Impl_ConfigureBackend() once again to
+  go with this strategy: it should accept two integers with
+  OR'ed caps: one for caps requested to be set by this call
+  to [configure] and the other -- for caps requested to be
+  reset.
+  This should provide for simpler code in Impl_Configure
+  (no malloc()'ed array for instance, simpler checking for
+  conflicting options, etc).
 
 * Rework Impl_CgetBackend() so that it also returns the default
   value for the capability passed to it.

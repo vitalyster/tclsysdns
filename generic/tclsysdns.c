@@ -476,7 +476,7 @@ Configure_Set (
 
 	const char **optnames;
 	const int *flagvalues;
-	int i, len, nopts, seendef, opt;
+	int i, len, nopts, defaults, opt, caps;
 	parse_mode mode;
 	round_result_t res;
 	cap_val_t *fvec;
@@ -488,9 +488,10 @@ Configure_Set (
 	fvec = (cap_val_t *) ckalloc(len);
 	memset(fvec, 0, len);
 
-	nopts   = 0;
-	seendef = 0;
-	mode    = PMODE_OPTION;
+	caps     = 0;
+	nopts    = 0;
+	defaults = 0;
+	mode     = PMODE_OPTION;
 
 	for (i = 1; i < objc; ) {
 		int cap, val;
@@ -516,7 +517,7 @@ Configure_Set (
 							res = RRES_ERROR;
 							break;
 						} else {
-							if (seendef) {
+							if (defaults) {
 								res = RRES_DEFCONFLICT;
 								break;
 							}
@@ -529,7 +530,7 @@ Configure_Set (
 							res = RRES_DEFCONFLICT;
 							break;
 						}
-						seendef = 1;
+						defaults = 1;
 					}
 				} else {
 					/* TODO do we need this? It should never occur now
@@ -551,6 +552,9 @@ Configure_Set (
 					break;
 				}
 
+				if (val) {
+					caps |= cap;
+				}
 				fvec[opt].val = val;
 				++nopts;
 				mode = PMODE_OPTION;
@@ -565,25 +569,42 @@ Configure_Set (
 			case RRES_DEFCONFLICT:
 				Tcl_SetObjResult(interp, Tcl_NewStringObj("Option \"-defaults\" "
 							"cannot be combined with other options", -1));
-				/* falls through */
+				goto error;
 			case RRES_ERROR:
-				ckfree((char *) fvec);
-				return TCL_ERROR;
+				goto error;
 		}
 	}
 
-	for (i = 0; i < pkgData.b_ncaps; ++i) {
-		if (fvec[i].set) {
-			if (Impl_ConfigureBackend(ImplClientData(clientData),
-						interp, fvec[i].cap) != TCL_OK) {
-				ckfree((char *) fvec);
-				return TCL_ERROR;
+	if (defaults) {
+		if (Impl_ConfigureBackend(ImplClientData(clientData),
+					interp, DBC_DEFAULTS, 1) != TCL_OK) {
+			goto error;
+		}
+	} else {
+		/* Sanity check */
+		if ((caps & DBC_NOCACHE) && (caps & DBC_NOWIRE)) {
+			Tcl_ResetResult(interp);
+			Tcl_SetResult(interp, "Options -nocache and -nowire "
+					"cannot be used together", TCL_STATIC);
+			goto error;
+		}
+		/* Injecting collected caps */
+		for (i = 0; i < pkgData.b_ncaps; ++i) {
+			if (fvec[i].set) {
+				if (Impl_ConfigureBackend(ImplClientData(clientData),
+							interp, fvec[i].cap, fvec[i].val) != TCL_OK) {
+					goto error;
+				}
 			}
 		}
 	}
 
 	ckfree((char *) fvec);
-	return TCL_OK;
+	return TCL_ERROR;
+
+error:
+	ckfree((char *) fvec);
+	return TCL_ERROR;
 }
 
 static int
