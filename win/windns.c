@@ -634,43 +634,42 @@ int
 Impl_ConfigureBackend (
 	ClientData clientData,
 	Tcl_Interp *interp,
-	const dns_backend_cap_t cap,
-	const int val
+	const int set,
+	const int clear
 	)
 {
+	const struct {
+		int cap; int opt;
+	} map[] = {
+		{ DBC_RAWRESULT,  DNS_QUERY_RETURN_MESSAGE },
+		{ DBC_TCP,        DNS_QUERY_USE_TCP_ONLY },
+		{ DBC_TRUNCOK,    DNS_QUERY_ACCEPT_TRUNCATED_RESPONSE },
+		{ DBC_NOCACHE,    DNS_QUERY_BYPASS_CACHE },
+		{ DBC_NOWIRE,     DNS_QUERY_CACHE_ONLY },
+		{ DBC_SEARCH,    ~DNS_QUERY_TREAT_AS_FQDN },
+	};
+
 	InterpData *interpData;
-	int flag;
+	int i;
 
 	interpData = (InterpData *) clientData;
 
-	switch (cap) {
-		case DBC_DEFAULTS:
-			interpData->res_opts = RES_DEFOPTS;
-			return TCL_OK;
-		case DBC_RAWRESULT:
-			flag = DNS_QUERY_RETURN_MESSAGE;
-			break;
-		case DBC_TCP:
-			flag = DNS_QUERY_USE_TCP_ONLY;
-			break;
-		case DBC_TRUNCOK:
-			flag = DNS_QUERY_ACCEPT_TRUNCATED_RESPONSE;
-			break;
-		case DBC_NOCACHE:
-			flag = DNS_QUERY_BYPASS_CACHE;
-			break;
-		case DBC_NOWIRE:
-			flag = DNS_QUERY_CACHE_ONLY;
-			break;
-		case DBC_SEARCH:
-			flag = ~DNS_QUERY_TREAT_AS_FQDN;
-			break;
+	if (set == DBC_DEFAULTS) {
+		interpData->res_opts = RES_DEFOPTS;
+		return TCL_OK;
 	}
 
-	if (val) {
-		interpData->res_opts |= flag;
-	} else {
-		interpData->res_opts |= ~flag;
+	for (i = 0; i < sizeof(map)/sizeof(map[0]); ++i) {
+		int cap, opt;
+
+		cap = map[i].cap;
+		opt = map[i].opt;
+
+		if (set & cap) {
+			interpData->res_opts |= opt;
+		} else if (clear & cap) {
+			interpData->res_opts &= ~opt;
+		}
 	}
 
 	return TCL_OK;

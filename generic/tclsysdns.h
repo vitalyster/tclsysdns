@@ -84,8 +84,8 @@ int
 Impl_ConfigureBackend (
 	ClientData clientData,
 	Tcl_Interp *interp,
-	const dns_backend_cap_t cap,
-	const int val);
+	const int set,
+	const int clear);
 
 int
 Impl_CgetBackend (

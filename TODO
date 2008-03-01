@@ -2,31 +2,26 @@ $Id$
 
 HIGH:
 
-* Fix this issue:
-% ::sysdns::configure -nowire 1
-% ::sysdns::configure -nowire 1 -nocache 0
-% ::sysdns::configure -nowire 1 -nocache 0 -nowire 1
-% ::sysdns::configure -nowire 1 -nocache 0 -nowire 1 -nocache 1
-Options -nocache and -nowire cannot be used together
-% ::sysdns::configure -nowire 1 -nocache 0 -nowire 1 -nocache 0
+* (win32) Fix this issue:
 % ::sysdns::configure
-  (Looks like we should only increase the index variable when
-  the option being processed hasn't already been "seen").
-  Also see the next entry.
+-defaults 0 -rawresult 0 -tcp 1 -accepttruncated 0 -nocache 0 -nowire 1 -search 1
+::sysdns::reinit ::sysdns::resolve
+% ::sysdns::resolve jabber.ru
+Запись DNS не существует.
+% set errorCode
+WINDOWS 9701 {Запись DNS не существует.}
+  This must just return an empty string instead of throwing an
+  error.
 
-* Think of reimplementing Impl_ConfigureBackend() once again to
-  go with this strategy: it should accept two integers with
-  OR'ed caps: one for caps requested to be set by this call
-  to [configure] and the other -- for caps requested to be
-  reset.
-  This should provide for simpler code in Impl_Configure
-  (no malloc()'ed array for instance, simpler checking for
-  conflicting options, etc).
+* (win32) fix handling of the "-search" option in configure.
+
+* (?) Remove appearance of "-detault" in the output that
+  no-args form of [configure] generates.
 
 * Rework Impl_CgetBackend() so that it also returns the default
   value for the capability passed to it.
 
-* Make Impl_CgetBackend() to return sensible boolean value
+* (?) Make Impl_CgetBackend() to return sensible boolean value
   when asked about "defaults" capability -- it should true
   iff the current set of options is the default,
   false otherwise.

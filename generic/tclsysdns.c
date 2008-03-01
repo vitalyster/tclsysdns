@@ -468,27 +468,18 @@ Configure_Set (
 		RRES_DEFCONFLICT,
 	} round_result_t;
 
-	typedef struct {
-		int set;
-		dns_backend_cap_t cap;
-		int val;
-	} cap_val_t;
-
 	const char **optnames;
 	const int *flagvalues;
-	int i, len, nopts, defaults, opt, caps;
+	int i, nopts, defaults, opt;
+	int set, clear;
 	parse_mode mode;
 	round_result_t res;
-	cap_val_t *fvec;
 
 	optnames   = pkgData.conf.olist;
 	flagvalues = pkgData.conf.omap;
 
-	len  = sizeof(cap_val_t) * pkgData.b_ncaps;
-	fvec = (cap_val_t *) ckalloc(len);
-	memset(fvec, 0, len);
-
-	caps     = 0;
+	set      = 0;
+	clear    = 0;
 	nopts    = 0;
 	defaults = 0;
 	mode     = PMODE_OPTION;
@@ -508,39 +499,27 @@ Configure_Set (
 
 				cap = flagvalues[opt];
 
-				if (pkgData.b_caps & cap) {
-					if (cap != DBC_DEFAULTS) {
-						if (i == objc - 1) {
-							Tcl_ResetResult(interp);
-							Tcl_AppendResult(interp, "Option \"", optnames[opt],
-									"\" requires an argument", NULL);
-							res = RRES_ERROR;
-							break;
-						} else {
-							if (defaults) {
-								res = RRES_DEFCONFLICT;
-								break;
-							}
-						}
-						fvec[opt].set = 1;
-						fvec[opt].cap = cap;
-						mode = PMODE_VALUE;
+				if (cap != DBC_DEFAULTS) {
+					if (i == objc - 1) {
+						Tcl_ResetResult(interp);
+						Tcl_AppendResult(interp, "Option \"", optnames[opt],
+								"\" requires an argument", NULL);
+						res = RRES_ERROR;
+						break;
 					} else {
-						if (nopts > 0) {
+						if (defaults) {
 							res = RRES_DEFCONFLICT;
 							break;
 						}
+					}
+					mode = PMODE_VALUE;
+				} else {
+					if (nopts > 0) {
+						res = RRES_DEFCONFLICT;
+						break;
+					} else {
 						defaults = 1;
 					}
-				} else {
-					/* TODO do we need this? It should never occur now
-					 * since the list of available options matches the
-					 * backend caps */
-					Tcl_ResetResult(interp);
-					Tcl_AppendResult(interp, "Bad option \"", optnames[opt],
-							"\": not supported by the DNS resolution backend", NULL);
-					res = RRES_ERROR;
-					break;
 				}
 
 				++i;
@@ -553,9 +532,12 @@ Configure_Set (
 				}
 
 				if (val) {
-					caps |= cap;
+					set   |= cap;
+					clear &= ~cap;
+				} else {
+					clear |= cap;
+					set   &= ~cap;
 				}
-				fvec[opt].val = val;
 				++nopts;
 				mode = PMODE_OPTION;
 
@@ -569,42 +551,33 @@ Configure_Set (
 			case RRES_DEFCONFLICT:
 				Tcl_SetObjResult(interp, Tcl_NewStringObj("Option \"-defaults\" "
 							"cannot be combined with other options", -1));
-				goto error;
+				return TCL_ERROR;
 			case RRES_ERROR:
-				goto error;
+				return TCL_ERROR;
 		}
 	}
 
 	if (defaults) {
 		if (Impl_ConfigureBackend(ImplClientData(clientData),
-					interp, DBC_DEFAULTS, 1) != TCL_OK) {
-			goto error;
+					interp, DBC_DEFAULTS, 0) != TCL_OK) {
+				return TCL_ERROR;
 		}
 	} else {
 		/* Sanity check */
-		if ((caps & DBC_NOCACHE) && (caps & DBC_NOWIRE)) {
+		if ((set & DBC_NOCACHE) && (set & DBC_NOWIRE)) {
 			Tcl_ResetResult(interp);
 			Tcl_SetResult(interp, "Options -nocache and -nowire "
 					"cannot be used together", TCL_STATIC);
-			goto error;
+			return TCL_ERROR;
 		}
 		/* Injecting collected caps */
-		for (i = 0; i < pkgData.b_ncaps; ++i) {
-			if (fvec[i].set) {
-				if (Impl_ConfigureBackend(ImplClientData(clientData),
-							interp, fvec[i].cap, fvec[i].val) != TCL_OK) {
-					goto error;
-				}
-			}
+		if (Impl_ConfigureBackend(ImplClientData(clientData),
+					interp, set, clear) != TCL_OK) {
+			return TCL_ERROR;
 		}
 	}
 
-	ckfree((char *) fvec);
-	return TCL_ERROR;
-
-error:
-	ckfree((char *) fvec);
-	return TCL_ERROR;
+	return TCL_OK;
 }
 
 static int
