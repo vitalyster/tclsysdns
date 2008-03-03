@@ -494,7 +494,9 @@ Impl_Resolve (
 		NULL
 	);
 	if (res == DNS_ERROR_RCODE_NAME_ERROR /* NXDOMAIN */
-			|| res == DNS_INFO_NO_RECORDS) {
+			|| res == DNS_INFO_NO_RECORDS
+			|| (res == DNS_ERROR_RECORD_DOES_NOT_EXIST
+				&& interpData->res_opts & DNS_QUERY_CACHE_ONLY)) {
 		Tcl_ResetResult(interp);
 		return TCL_OK;
 	} else if (res != ERROR_SUCCESS) {
@@ -639,14 +641,14 @@ Impl_ConfigureBackend (
 	)
 {
 	const struct {
-		int cap; int opt;
+		int cap; int opt; int invert;
 	} map[] = {
-		{ DBC_RAWRESULT,  DNS_QUERY_RETURN_MESSAGE },
-		{ DBC_TCP,        DNS_QUERY_USE_TCP_ONLY },
-		{ DBC_TRUNCOK,    DNS_QUERY_ACCEPT_TRUNCATED_RESPONSE },
-		{ DBC_NOCACHE,    DNS_QUERY_BYPASS_CACHE },
-		{ DBC_NOWIRE,     DNS_QUERY_CACHE_ONLY },
-		{ DBC_SEARCH,    ~DNS_QUERY_TREAT_AS_FQDN },
+		{ DBC_RAWRESULT, DNS_QUERY_RETURN_MESSAGE,            0 },
+		{ DBC_TCP,       DNS_QUERY_USE_TCP_ONLY,              0 },
+		{ DBC_TRUNCOK,   DNS_QUERY_ACCEPT_TRUNCATED_RESPONSE, 0 },
+		{ DBC_NOCACHE,   DNS_QUERY_BYPASS_CACHE,              0 },
+		{ DBC_NOWIRE,    DNS_QUERY_CACHE_ONLY,                0 },
+		{ DBC_SEARCH,    DNS_QUERY_TREAT_AS_FQDN,             1 },
 	};
 
 	InterpData *interpData;
@@ -660,14 +662,23 @@ Impl_ConfigureBackend (
 	}
 
 	for (i = 0; i < sizeof(map)/sizeof(map[0]); ++i) {
-		int cap, opt;
+		int cap, opt, invert, on, off;
 
-		cap = map[i].cap;
-		opt = map[i].opt;
+		cap    = map[i].cap;
+		opt    = map[i].opt;
+		invert = map[i].invert;
 
-		if (set & cap) {
+		on  = set & cap;
+		off = clear & cap;
+
+		if (invert) {
+			on  = !on;
+			off = !off;
+		}
+
+		if (on) {
 			interpData->res_opts |= opt;
-		} else if (clear & cap) {
+		} else if (off) {
 			interpData->res_opts &= ~opt;
 		}
 	}
@@ -684,10 +695,11 @@ Impl_CgetBackend (
 	)
 {
 	InterpData *interpData;
-	int flag;
+	int flag, invert, val;
 
 	interpData = (InterpData *) clientData;
 
+	invert = 0;
 	switch (cap) {
 		case DBC_RAWRESULT:
 			flag = DNS_QUERY_RETURN_MESSAGE;
@@ -705,11 +717,20 @@ Impl_CgetBackend (
 			flag = DNS_QUERY_CACHE_ONLY;
 			break;
 		case DBC_SEARCH:
-			flag = ~DNS_QUERY_TREAT_AS_FQDN;
+			flag = DNS_QUERY_TREAT_AS_FQDN;
+			invert = 1;
+			break;
+		default:
+			/* Should not be reached, but anyway... */
+			flag   = 0;
 			break;
 	}
 
-	*resObjPtr = Tcl_NewBooleanObj(interpData->res_opts & flag);
+	val = interpData->res_opts & flag;
+	if (invert) {
+		val = !val;
+	}
+	*resObjPtr = Tcl_NewBooleanObj(val);
 
 	return TCL_OK;
 }

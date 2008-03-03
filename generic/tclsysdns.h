@@ -26,16 +26,16 @@
 
 /* Capabilities of DNS resolution backends */
 typedef enum {
-	DBC_DEFAULTS   = 1,    /* Reset configuration to defaults. Cannot be combined */
-	DBC_RAWRESULT  = 2,    /* Return raw DNS message as a query result */
-	DBC_TCP        = 4,    /* Use TCP, don't try UDP first */
-	DBC_TRUNCOK    = 8,    /* Accept truncated results, don't retry with TCP */
-	DBC_NOCACHE    = 16,   /* Bypass local cache */
-	DBC_NOWIRE     = 32,   /* Look at local cache only */
-	DBC_SEARCH     = 64,   /* Use search lists (search unqualified names in defined domains) */
-	DBC_PRIMARY    = 128,  /* Use only primary DNS */
-	__DBC_MIN      = DBC_DEFAULTS,
-	__DBC_MAX      = DBC_PRIMARY
+	DBC_DEFAULTS  = 0x0001, /* Reset configuration to defaults. Cannot be combined */
+	DBC_RAWRESULT = 0x0002, /* Return raw DNS message as a query result */
+	DBC_TCP       = 0x0004, /* Use TCP, don't try UDP first */
+	DBC_TRUNCOK   = 0x0008, /* Accept truncated results, don't retry with TCP */
+	DBC_NOCACHE   = 0x0010, /* Bypass local cache */
+	DBC_NOWIRE    = 0x0020, /* Look at local cache only */
+	DBC_SEARCH    = 0x0040, /* Use search lists (search unqualified names in defined domains) */
+	DBC_PRIMARY   = 0x0080, /* Use only primary DNS */
+	__DBC_MIN     = DBC_DEFAULTS,
+	__DBC_MAX     = DBC_PRIMARY
 } dns_backend_cap_t;
 /* DBC_DEFDOMAIN ? -- append default domain */
 /* DBC_NORECURSION ? -- don't request recursive processing on the server */
